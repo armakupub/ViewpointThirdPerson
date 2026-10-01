@@ -1,0 +1,17 @@
+# Build artifacts
+build/
+
+# Per-machine build config (see build.local.example)
+build.local
+
+# Local-only working notes and material
+docs/
+videos/
+*.mp4
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db

@@ -1,0 +1,37 @@
+version=1
+title=[B42] Third Person Camera for Project Viewpoint
+description=[h1]What it does[/h1]
+description=
+description=Turns Project Viewpoint's third-person view into a full camera, on foot and in vehicles.
+description=
+description=[list]
+description=[*][b]Over the shoulder[/b]: smoothed follow, left or right shoulder with a swap key, mouse wheel distance.
+description=[*][b]Indoors[/b]: the camera moves in under a roof and eases back out after a wall pushed it in.
+description=[*][b]Combat[/b]: the combat stance backs off to keep both flanks in view, aiming a firearm moves in over the shoulder.
+description=[*][b]Chase camera[/b]: the camera has weight. It lags when you speed up, closes in when you brake, drifts wide in turns and swings in behind where you are going, slides included.
+description=[*][b]Speed feel[/b]: the faster you go, the further it drops back and the wider the view, scaled to each vehicle's top speed. One slider, 0 fixes the camera to the vehicle.
+description=[*][b]Sized to the vehicle[/b]: distance and height follow the vehicle, from bike to fire truck, trailers included.
+description=[*][b]Smooth mouse[/b] while seated.
+description=[*][b]Cursor key[/b]: a keyboard key for Viewpoint's cursor toggle, in place of the middle mouse button.
+description=[/list]
+description=
+description=Settings in Viewpoint's settings window under [b]Third person[/b], keys under [b]Keys → Third person camera[/b].
+description=
+description=[h1]Requirements[/h1]
+description=[list]
+description=[*]PZ Build 42.21 or later
+description=[*][url=https://steamcommunity.com/sharedfiles/filedetails/?id=3809306528]Project Viewpoint[/url]
+description=[/list]
+description=
+description=On first launch ZombieBuddy asks whether to load the mod's JAR, tick Allow.
+description=
+description=[h1]Compatibility[/h1]
+description=[list]
+description=[*]Safe to add or remove mid-save, the mod stores nothing in the save.
+description=[*]Made for mouse and keyboard. Controllers are not tested and not explicitly supported yet.
+description=[/list]
+description=
+description=[h1]Bugs and ideas[/h1]
+description=Please report them at [url=https://github.com/armakupub/ViewpointThirdPerson/issues]github.com/armakupub/ViewpointThirdPerson/issues[/url], ideally with screenshots and the console.txt of that session (in your Zomboid folder).
+tags=Build 42;Interface;QoL;Vehicles
+visibility=public

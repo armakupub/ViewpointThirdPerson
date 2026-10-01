@@ -1,0 +1,15 @@
+# Per-machine build configuration. Copy to build.local (gitignored) and edit.
+
+# Project Zomboid install directory — must contain projectzomboid.jar
+# and ZombieBuddy.jar.
+PZ_DIR="C:/Games/Steam/steamapps/common/ProjectZomboid"
+
+# Viewpoint's jar, from its Workshop download (3809306528).
+VIEWPOINT_JAR="C:/Games/Steam/steamapps/workshop/content/108600/3809306528/mods/Viewpoint/42/media/java/client/Viewpoint.jar"
+
+# JDK with javac/jar (any JDK 17+).
+JDK_DIR="C:/Program Files/Zulu/zulu-25"
+
+# Where to install the built mod for local testing. Defaults to
+# "$USERPROFILE/Zomboid/mods/ViewpointThirdPerson" if not set.
+# MOD_INSTALL_ROOT="$USERPROFILE/Zomboid/mods/ViewpointThirdPerson"
