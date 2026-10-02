@@ -17,18 +17,28 @@ Turns Project Viewpoint's third-person view into a full camera, on foot and in v
 Settings in Viewpoint's settings window under [b]Third person[/b], keys under [b]Keys → Third person camera[/b], controller settings under [b]Third person → Controller[/b].
 
 [h1]Controller[/h1]
-Works with the game's own controller layout. While Viewpoint's view is on:
+Works with the game's own controller layout, on Xbox, PlayStation and Steam Deck controllers. Button names below are Xbox, the table has the others. While Viewpoint's view is on:
 [list]
-[*][b]Right stick[/b] turns the camera. The game aims with it otherwise, so you aim with a light pull on RT, as in the game's Default preset, or with LT in the preset below.
+[*][b]Switching views[/b]: hold Back, the button that opens the game's own radial menu, pick the entry with the right stick and let go. Viewpoint on or off, first or third person, swap shoulder.
+[*][b]Right stick[/b] turns the camera, on foot and in vehicles. The game aims with it otherwise, so you aim with a light pull on RT, as in the game's Default preset, or with LT in the preset below. The view turns slower while aiming.
 [*][b]Moving[/b]: your character turns to wherever the left stick points and runs there, towards the camera too. Once the right stick rests for a moment, the camera swings in behind you.
 [*][b]Viewpoint's loot panel[/b] (look at a container, vehicle or body): D-pad Down cycles the rows, RB takes or does the selected one, hold RB to take all. Anywhere else both keep their game function.
 [*]Menus and radial wheels work as in the game, the camera holds still while they are open.
-[*]Switching Viewpoint's views is on the keyboard (O, Shift+O).
 [/list]
+
+[table]
+[tr][th]Xbox[/th][th]PlayStation[/th][th]Steam Deck[/th][/tr]
+[tr][td]LB / RB[/td][td]L1 / R1[/td][td]L1 / R1[/td][/tr]
+[tr][td]LT / RT[/td][td]L2 / R2[/td][td]L2 / R2[/td][/tr]
+[tr][td]A / B / X / Y[/td][td]Cross / Circle / Square / Triangle[/td][td]A / B / X / Y[/td][/tr]
+[/table]
+The hints in Viewpoint's loot panel follow the button style set in the game's controller options.
 
 [b]Recommended preset[/b]: the mod adds [b]Viewpoint Third Person[/b] to Options → Controller → Preset once you have loaded a save with the mod. It is the Default with aiming on LT, shove on LB and rack on D-pad Up, so RT only attacks. Your current preset stays selected until you pick it.
 
 With the Original preset, which aims on the right stick, the right stick keeps aiming and the camera does not turn.
+
+[b]Steam Deck[/b]: works with the Deck's own controls, no Steam Input layout needed. If you prefer to look with the right trackpad, set it to "As Mouse" in Steam Input, Viewpoint's mouse look works alongside the stick.
 
 [h1]Requirements[/h1]
 [list]
@@ -42,6 +52,8 @@ On first launch ZombieBuddy asks whether to load the mod's JAR, tick Allow.
 [list]
 [*]Safe to add or remove mid-save, the mod stores nothing in the save.
 [*]Mouse and keyboard or controller.
+[*]Aiming from a vehicle is off while Viewpoint's view is on, for now.
+[*]Not meant to run together with Controller Aim for Viewpoint, both change the controller's aiming.
 [/list]
 
 [h1]Bugs and ideas[/h1]
