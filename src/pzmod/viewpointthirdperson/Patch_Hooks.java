@@ -8,5 +8,7 @@ public class Patch_Hooks {
     @Patch.OnExit
     public static void exit() {
         ThirdPersonZoom.mouseUpdated();
+        ControllerLook.update();
+        PadLoot.update();
     }
 }

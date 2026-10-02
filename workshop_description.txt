@@ -11,9 +11,24 @@ Turns Project Viewpoint's third-person view into a full camera, on foot and in v
 [*][b]Sized to the vehicle[/b]: distance and height follow the vehicle, from bike to fire truck, trailers included.
 [*][b]Smooth mouse[/b] while seated.
 [*][b]Cursor key[/b]: a keyboard key for Viewpoint's cursor toggle, in place of the middle mouse button.
+[*][b]Controller[/b]: the right stick turns the camera, details below.
 [/list]
 
-Settings in Viewpoint's settings window under [b]Third person[/b], keys under [b]Keys → Third person camera[/b].
+Settings in Viewpoint's settings window under [b]Third person[/b], keys under [b]Keys → Third person camera[/b], controller settings under [b]Third person → Controller[/b].
+
+[h1]Controller[/h1]
+Works with the game's own controller layout. While Viewpoint's view is on:
+[list]
+[*][b]Right stick[/b] turns the camera. The game aims with it otherwise, so you aim with a light pull on RT, as in the game's Default preset, or with LT in the preset below.
+[*][b]Moving[/b]: your character turns to wherever the left stick points and runs there, towards the camera too. Once the right stick rests for a moment, the camera swings in behind you.
+[*][b]Viewpoint's loot panel[/b] (look at a container, vehicle or body): D-pad Down cycles the rows, RB takes or does the selected one, hold RB to take all. Anywhere else both keep their game function.
+[*]Menus and radial wheels work as in the game, the camera holds still while they are open.
+[*]Switching Viewpoint's views is on the keyboard (O, Shift+O).
+[/list]
+
+[b]Recommended preset[/b]: the mod adds [b]Viewpoint Third Person[/b] to Options → Controller → Preset once you have loaded a save with the mod. It is the Default with aiming on LT, shove on LB and rack on D-pad Up, so RT only attacks. Your current preset stays selected until you pick it.
+
+With the Original preset, which aims on the right stick, the right stick keeps aiming and the camera does not turn.
 
 [h1]Requirements[/h1]
 [list]
@@ -26,7 +41,7 @@ On first launch ZombieBuddy asks whether to load the mod's JAR, tick Allow.
 [h1]Compatibility[/h1]
 [list]
 [*]Safe to add or remove mid-save, the mod stores nothing in the save.
-[*]Made for mouse and keyboard. Controllers are not tested and not explicitly supported yet.
+[*]Mouse and keyboard or controller.
 [/list]
 
 [h1]Bugs and ideas[/h1]
