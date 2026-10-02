@@ -23,6 +23,7 @@ public class ControllerLook {
     static final float TWO_PI = (float) (Math.PI * 2.0);
 
     public static final LiveSettings.Number SPEED = LiveSettings.number("thirdPersonCamera.controllerLookSpeed", "Right stick: look speed", SECTION, 0.2f, 3.0f, 0.05f, 1.0f);
+    public static final LiveSettings.Number AIM_SPEED = LiveSettings.number("thirdPersonCamera.controllerAimSpeed", "Right stick: look speed while aiming", SECTION, 0.1f, 1.0f, 0.05f, 0.45f);
     public static final LiveSettings.Toggle INVERT_Y = LiveSettings.toggle("thirdPersonCamera.controllerInvertY", "Right stick: invert vertical look", SECTION, false);
     public static final LiveSettings.Number FOLLOW_DELAY = LiveSettings.number("thirdPersonCamera.controllerFollowDelay", "Swing in behind after (s)", SECTION, 0.0f, 5.0f, 0.1f, 1.5f);
 
@@ -39,6 +40,7 @@ public class ControllerLook {
 
     static {
         SPEED.describe("How fast the right stick turns the view. With a controller the right stick looks round while Viewpoint is on, and a light pull on the right trigger aims, as the right mouse button does. With the Original preset, which aims on the right stick, it keeps aiming.");
+        AIM_SPEED.describe("While aiming, the right stick turns at this share of its speed, for a finer aim.");
         INVERT_Y.describe("Pushing the right stick forward looks down, and back looks up.");
         FOLLOW_DELAY.describe("With a controller, the camera swings round behind your character once the right stick rests this long while you walk or run away from it, not while aiming. 0 never swings.");
     }
@@ -56,7 +58,8 @@ public class ControllerLook {
         boolean pad = id >= 0 && p.getInputMode() == CharacterInputMode.GAMEPAD;
         boolean panel = pad && panelHasPad(p);
         boolean on = pad && !panel && View.enabled && Look.captured && !FreeCam.active
-                && p.getVehicle() == null && !p.isDead() && !aimsOnRightStick();
+                && !p.isDead() && !aimsOnRightStick();
+        boolean seated = p != null && p.getVehicle() != null;
         bind = id;
         panelHasPad = panel;
         active = on;
@@ -76,12 +79,19 @@ public class ControllerLook {
             recentre = false;
         }
         if (x == 0.0f && y == 0.0f) {
-            follow(p, dt);
+            if (seated) {
+                rested = 0.0f;
+                yawSpring.speed = 0.0f;
+            } else {
+                follow(p, dt);
+            }
             return;
         }
         rested = 0.0f;
         yawSpring.speed = 0.0f;
-        float speed = SPEED.get();
+        // Holds the vehicle camera's swing back, as the mouse does.
+        if (seated) VehicleCamera.mouseMoved = true;
+        float speed = SPEED.get() * (p.isAiming() ? AIM_SPEED.get() : 1.0f);
         float up = INVERT_Y.get() ? y : -y;
         Look.yaw = wrap(Look.yaw + x * YAW_RATE * speed * dt);
         Look.pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, Look.pitch + up * PITCH_RATE * speed * dt));
