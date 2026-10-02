@@ -27,6 +27,24 @@ Events.OnGameStart.Add(function()
         if self.player == 0 and ViewpointThirdPerson.lootPanelTake() then return end
         return rbPress(self)
     end
+    -- Viewpoint's view keys on the controller's Back wheel, after the game's own slices.
+    local addCommands = ISBackButtonWheel.addCommands
+    ISBackButtonWheel.addCommands = function(self)
+        addCommands(self)
+        if self.playerNum ~= 0 or not (Viewpoint and Viewpoint.Keys) then return end
+        local function key(id, icon)
+            self:addSlice(Viewpoint.Keys.label(id), getTexture(icon), function() ViewpointThirdPerson.padKey(id) end)
+        end
+        local on = ViewpointThirdPerson.viewOn()
+        key("keys.firstPerson", on and "media/ui/foraging/eyeconOff.png" or "media/ui/foraging/eyeconOn.png")
+        if on then
+            local third = ViewpointThirdPerson.thirdPersonOn()
+            key("keys.thirdPerson", third and "media/ui/ZoomIn.png" or "media/ui/ZoomOut.png")
+            if third and not getSpecificPlayer(0):getVehicle() then
+                key("thirdPersonCamera.keys.swapShoulder", "media/ui/arrow_right.png")
+            end
+        end
+    end
     local releaseDown = JoypadControllerData.onReleaseDown
     JoypadControllerData.onReleaseDown = function(self)
         if self.joypad and self.joypad.player == 0 then ViewpointThirdPerson.lootPanelRelease() end

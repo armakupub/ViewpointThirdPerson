@@ -10,6 +10,31 @@ public class Patch_KeyBind {
     public static final String MIDDLE = "Middle mouse button";
     public static volatile KeyBind cursor;
 
+    // A press asked for from the controller's Back wheel, answered once as if the key went down.
+    static final long PRESS_NANOS = 500_000_000L;
+    static volatile KeyBind asked;
+    static volatile long askedAt;
+
+    public static void press(KeyBind bind) {
+        askedAt = System.nanoTime();
+        asked = bind;
+    }
+
+    public static boolean take(Object self) {
+        KeyBind b = asked;
+        if (b == null || self != b) return false;
+        asked = null;
+        return System.nanoTime() - askedAt < PRESS_NANOS;
+    }
+
+    @Patch(className = "viewpoint.platform.KeyBind", methodName = "pressed")
+    public static class Patch_pressed {
+        @Patch.OnExit
+        public static void exit(@Patch.This Object self, @Patch.Return(readOnly = false) boolean ret) {
+            if (!ret && Patch_KeyBind.take(self)) ret = true;
+        }
+    }
+
     @Patch(className = "viewpoint.platform.KeyBind", methodName = "bound")
     public static class Patch_bound {
         @Patch.OnExit
