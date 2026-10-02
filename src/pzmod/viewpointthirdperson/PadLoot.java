@@ -4,6 +4,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import me.zed_0xff.zombie_buddy.Patch;
 import viewpoint.interact.LootMenu;
+import zombie.core.Core;
 import zombie.core.Translator;
 import zombie.characters.CharacterJoypadButtonBinding;
 import zombie.input.JoypadButton;
@@ -137,13 +138,15 @@ public class PadLoot {
             boolean act = (int) action.invoke(lootRows) >= 0;
             boolean all = (boolean) loot.invoke(null);
             JoypadButton lootButton = CharacterJoypadButtonBinding.Inventory.getJoypadButton();
-            int flags = (press ? 1 : 0) | (act ? 2 : 0) | (all ? 4 : 0) | (lootButton == null ? 0 : (lootButton.ordinal() + 1) << 3);
+            int style = Core.getInstance().getOptionControllerButtonStyle();
+            int flags = (press ? 1 : 0) | (act ? 2 : 0) | (all ? 4 : 0) | (lootButton == null ? 0 : (lootButton.ordinal() + 1) << 3) | style << 8;
             if (flags != hintFlags) {
                 hintFlags = flags;
-                String h = press ? key("RB", act ? "IGUI_Controller_Interact" : "ContextMenu_Grab") : "";
-                if (all) h = join(h, key("RB (hold)", "IGUI_invpage_Loot_all"));
+                String rb = name(JoypadButton.RightBump, style);
+                String h = press ? key(rb, act ? "IGUI_Controller_Interact" : "ContextMenu_Grab") : "";
+                if (all) h = join(h, key(rb + " (hold)", "IGUI_invpage_Loot_all"));
                 h = join(h, key("D-pad Down", "IGUI_CycleItems"));
-                if (all && lootButton != null) h = join(h, key(name(lootButton), "IGUI_Controller_Loot"));
+                if (all && lootButton != null) h = join(h, key(name(lootButton, style), "IGUI_Controller_Loot"));
                 hint = h;
             }
             return hint;
@@ -154,10 +157,18 @@ public class PadLoot {
     }
 
     // The button the game shows as Loot beside something to loot (its Inventory binding).
-    static String name(JoypadButton b) {
+    // As the controller the player picked in the game's options calls it (Xbox 1, PlayStation 2,
+    // Steam Deck 3).
+    static String name(JoypadButton b, int style) {
+        boolean ps = style == 2;
+        boolean xbox = style != 2 && style != 3;
         switch (b) {
-            case LeftBump: return "LB";
-            case RightBump: return "RB";
+            case A: return ps ? "Cross" : "A";
+            case B: return ps ? "Circle" : "B";
+            case X: return ps ? "Square" : "X";
+            case Y: return ps ? "Triangle" : "Y";
+            case LeftBump: return xbox ? "LB" : "L1";
+            case RightBump: return xbox ? "RB" : "R1";
             case LeftStick: return "L3";
             case RightStick: return "R3";
             case DPadUp: return "D-pad Up";
