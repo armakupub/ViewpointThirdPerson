@@ -50,6 +50,9 @@ if [ ! -f "$JAVAC" ]; then
     exit 1
 fi
 
+# --- Advice access ---
+"$JDK_DIR/bin/java.exe" "$PROJECT_ROOT/tools/AdviceAccessCheck.java" "$SRC_DIR"
+
 # --- Clean ---
 rm -rf "$BUILD_DIR"
 mkdir -p "$CLASSES_DIR"
