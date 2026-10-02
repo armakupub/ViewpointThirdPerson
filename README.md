@@ -9,6 +9,16 @@ An add-on for [Project Viewpoint](https://steamcommunity.com/sharedfiles/filedet
 
 All settings are in Viewpoint's settings window under **Third person**, the keys under **Keys, Third person camera**.
 
+## Screenshots
+
+![Controller layout](screenshots/controller_layout.png)
+
+| Settings | Keys |
+|---|---|
+| ![Third person settings](screenshots/settings_third_person.png) | ![Keys](screenshots/settings_keys.png) |
+
+![Viewpoint's views on the controller's Back wheel](screenshots/controller_back_wheel.png)
+
 ## Requirements
 
 - Project Zomboid B42.21
