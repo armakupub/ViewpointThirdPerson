@@ -126,6 +126,7 @@ public class ThirdPersonRig {
 
     public static void init() {
         VehicleCamera.init();
+        ControllerLook.init();
     }
 
     // Choice.set is package-private; through it the window shows the side the key chose.

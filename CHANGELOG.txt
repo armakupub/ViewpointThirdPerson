@@ -1,6 +1,14 @@
 Third Person Camera for Project Viewpoint - Changelog
 =====================================================
 
+0.2.0 - 2026-10-02
+  - Controller support, within the game's own layout. While Viewpoint's view is on, the right stick turns the camera, on foot and in vehicles. Aim with a light pull on RT, or with LT in the new preset. The view turns slower while aiming.
+  - On foot with a controller the character turns to wherever the left stick points and runs there, towards the camera too. Once the right stick rests, the camera swings in behind.
+  - Viewpoint's views switch from the game's Back wheel: Viewpoint on or off, first or third person, swap shoulder.
+  - Viewpoint's loot panel with a controller: D-pad Down cycles the rows, RB takes or does the selected one, hold RB to take all. Its hints follow the controller style set in the game's options.
+  - New controller preset "Viewpoint Third Person" under Options, Controller, Preset, after a save with the mod has been loaded once: the Default with aiming on LT, shove on LB and rack on D-pad Up.
+  - Aiming from a vehicle is off while Viewpoint's view is on. It stood the character up in the seat, jerked the camera and missed the reticle.
+
 0.1.1 - 2026-10-02
   - Fixed: on foot the character looked jittery on screen, above all at lower or uneven frame rates. The camera timed its follow on its own clock while the body moves on the game's, and with uneven frames the two drifted apart.
   - The camera now trails the body by its pace on the game's clock: at a steady pace your character holds still on screen, however uneven the frames. Starting and stopping still lag behind as before.
