@@ -1,5 +1,6 @@
 version=1
-title=[B42] Third Person Camera for Project Viewpoint
+id=3811587776
+title=Third Person Camera for Project Viewpoint
 description=[h1]What it does[/h1]
 description=
 description=Turns Project Viewpoint's third-person view into a full camera, on foot and in vehicles.
@@ -33,5 +34,5 @@ description=[/list]
 description=
 description=[h1]Bugs and ideas[/h1]
 description=Please report them at [url=https://github.com/armakupub/ViewpointThirdPerson/issues]github.com/armakupub/ViewpointThirdPerson/issues[/url], ideally with screenshots and the console.txt of that session (in your Zomboid folder).
-tags=Build 42;Interface;QoL;Vehicles
+tags=Build 42;Interface;Vehicles;QoL
 visibility=public

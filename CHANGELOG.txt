@@ -1,6 +1,11 @@
 Third Person Camera for Project Viewpoint - Changelog
 =====================================================
 
+0.1.1 - 2026-10-02
+  - Fixed: on foot the character looked jittery on screen, above all at lower or uneven frame rates. The camera timed its follow on its own clock while the body moves on the game's, and with uneven frames the two drifted apart.
+  - The camera now trails the body by its pace on the game's clock: at a steady pace your character holds still on screen, however uneven the frames. Starting and stopping still lag behind as before.
+  - Thanks to everyone who reported it.
+
 0.1.0 - 2026-10-02
   - First release.
   - On foot: over-the-shoulder camera with smoothed follow, shoulder swap, mouse wheel distance and a closer view indoors.

@@ -2,6 +2,6 @@ name=Viewpoint - Third Person Camera
 id=ViewpointThirdPerson
 description=A GTA-style third-person camera for Viewpoint: over the shoulder on foot with combat and firearm profiles, a chase camera with weight and speed feel in vehicles, wheel zoom, shoulder swap and a key for the cursor. Settings in Viewpoint's window under Third person.
 require=ZombieBuddy,Viewpoint
-modversion=0.1.0
+modversion=0.1.1
 poster=poster.png
 icon=icon.png

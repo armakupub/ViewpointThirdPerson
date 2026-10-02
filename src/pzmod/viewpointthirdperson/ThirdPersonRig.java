@@ -10,6 +10,7 @@ import viewpoint.core.Frame;
 import viewpoint.input.Look;
 import viewpoint.input.ThirdPerson;
 import viewpoint.platform.LiveSettings;
+import zombie.GameTime;
 import zombie.characters.IsoGameCharacter;
 import zombie.iso.IsoGridSquare;
 import zombie.inventory.types.HandWeapon;
@@ -28,6 +29,8 @@ public class ThirdPersonRig {
     static final float INDOOR_TIME = 0.4f;
     static final float SETTLE = 0.5f;
     static final long GRACE_NANOS = 3_000_000_000L;
+    static final float VELOCITY_WINDOW = 0.15f;
+    static final int TRAIL = 128;
 
     public static final LiveSettings.Number DISTANCE = LiveSettings.number("thirdPersonCamera.distance", "Distance", SECTION, 0.3f, 8.0f, 0.05f, 2.0f);
     public static final LiveSettings.Number ZOOM_NEAR = LiveSettings.number("thirdPersonCamera.zoomNearest", "Mouse wheel: nearest", SECTION, 0.3f, 8.0f, 0.05f, 1.5f);
@@ -57,6 +60,13 @@ public class ThirdPersonRig {
     public static volatile float firearmEased;
     static boolean following;
     static float pivotX, pivotY, pivotH;
+    static float lagX, lagY;
+    static float stepAhead;
+    static double clock;
+    static final double[] trailT = new double[TRAIL];
+    static final float[] trailX = new float[TRAIL];
+    static final float[] trailY = new float[TRAIL];
+    static int trailEnd, trailCount;
     static long last;
     static float shownDistance = -1.0f;
     static float indoor;
@@ -140,6 +150,10 @@ public class ThirdPersonRig {
         float dt = last == 0L ? 0.0f : Math.min(0.1f, (now - last) / 1.0e9f);
         last = now;
         lastDt = dt;
+        // Root motion worked out in one frame moves the body in the next, so this frame's
+        // step belongs to the previous frame's time delta.
+        float step = stepAhead;
+        stepAhead = GameTime.getInstance().getTimeDelta();
         if (ThirdPerson.active && ViewpointThirdPerson.shoulderPressed()) swapSide();
 
         Snap snap = snaps.computeIfAbsent(frame.cameraSquares, k -> new Snap());
@@ -200,17 +214,17 @@ public class ThirdPersonRig {
         float dx = tx - pivotX;
         float dy = ty - pivotY;
         if (!following || dx * dx + dy * dy > SNAP_DISTANCE * SNAP_DISTANCE || Math.abs(th - pivotH) > LEVEL) {
-            pivotX = tx;
-            pivotY = ty;
             pivotH = th;
             following = true;
+            trailCount = 0;
+            lagX = 0.0f;
+            lagY = 0.0f;
         } else {
-            float k = ease(dt, FOLLOW.get() * (1.0f - 0.7f * a));
-            pivotX += dx * k;
-            pivotY += dy * k;
             pivotH += (th - pivotH) * ease(dt, FOLLOW_HEIGHT.get());
         }
-
+        follow(tx, ty, step, FOLLOW.get() * (1.0f - 0.7f * a));
+        pivotX = tx - lagX;
+        pivotY = ty - lagY;
         snap.x = pivotX;
         snap.y = pivotY;
         snap.h = pivotH;
@@ -218,6 +232,28 @@ public class ThirdPersonRig {
         snap.distance = Math.max(MIN_DISTANCE, Math.min(MAX_DISTANCE, distance));
         snap.shoulder = lerp(lerp(SHOULDER.get(), MELEE_SHOULDER.get(), m), FIREARM_SHOULDER.get(), a) * side;
         snap.on = true;
+    }
+
+    // The pivot trails the body by its velocity over a short window, on the game's clock rather
+    // than ours: at a steady pace the body then holds still on screen however uneven the frames.
+    static void follow(float x, float y, float step, float time) {
+        clock += step;
+        trailEnd = (trailEnd + 1) % TRAIL;
+        trailT[trailEnd] = clock;
+        trailX[trailEnd] = x;
+        trailY[trailEnd] = y;
+        trailCount = Math.min(trailCount + 1, TRAIL);
+        int first = trailEnd;
+        for (int i = 1; i < trailCount; i++) {
+            first = (trailEnd - i + TRAIL) % TRAIL;
+            if (clock - trailT[first] >= VELOCITY_WINDOW) break;
+        }
+        double span = clock - trailT[first];
+        float vx = span > 1.0e-4 ? (float) ((x - trailX[first]) / span) : 0.0f;
+        float vy = span > 1.0e-4 ? (float) ((y - trailY[first]) / span) : 0.0f;
+        float k = ease(step, time);
+        lagX += (vx * time - lagX) * k;
+        lagY += (vy * time - lagY) * k;
     }
 
     public static float gridBoom(boolean seated, float boom) {

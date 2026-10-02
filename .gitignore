@@ -15,3 +15,6 @@ videos/
 *.iml
 .DS_Store
 Thumbs.db
+
+# Steam comment drafts
+STEAM_COMMENT_TEASER.md
