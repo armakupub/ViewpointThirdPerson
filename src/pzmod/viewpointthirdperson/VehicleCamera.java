@@ -9,7 +9,7 @@ import zombie.vehicles.BaseVehicle;
 
 public class VehicleCamera {
     static final String SECTION = ThirdPersonRig.TAB + "/Vehicle";
-    static final float NEAREST = 2.5f;
+    static final float NEAREST = 1.25f;
     static final float FARTHEST = 10.0f;
     static final float MOVING_KMH = 5.0f;
     static final float FULL_KMH = 40.0f;
@@ -28,11 +28,13 @@ public class VehicleCamera {
     static final float REF_LENGTH = 4.74f;
     static final float REF_HEIGHT = 1.18f;
     static final float HEIGHT_LIFT = 0.5f;
-    static final float HITCH = 0.5f;
+    // A raised camera tilts down to look at the road as far ahead as it does over a sedan.
+    static final float LOOK_AHEAD = 12.0f;
     static final float SIDE_SHARE = 0.5f;
     static final float OFFSET_MAX = 2.5f;
     static final float WEIGHT_TIME = 0.8f;
     static final float FEEL_DEFAULT = 0.5f;
+    static final float CLOSE_SWING = 0.5f;
 
     public static final LiveSettings.Number DISTANCE = LiveSettings.number("thirdPersonCamera.vehicleDistance", "Distance", SECTION, NEAREST, FARTHEST, 0.05f, 5.0f);
     public static final LiveSettings.Number MOUSE = LiveSettings.number("thirdPersonCamera.vehicleMouse", "Mouse smoothing (s)", SECTION, 0.0f, 0.5f, 0.01f, 0.12f);
@@ -41,7 +43,7 @@ public class VehicleCamera {
     public static final LiveSettings.Number SWING = LiveSettings.number("thirdPersonCamera.vehicleSwing", "Swing time (s)", SECTION, 0.1f, 3.0f, 0.05f, 0.5f);
     public static final LiveSettings.Number SLIDE = LiveSettings.number("thirdPersonCamera.vehicleSlide", "Follow the slide", SECTION, 0.0f, 1.0f, 0.05f, 1.0f);
     public static final LiveSettings.Number FEEL = LiveSettings.number("thirdPersonCamera.vehicleFeel", "Speed feel", SECTION, 0.0f, 1.0f, 0.05f, 0.5f);
-    public static final LiveSettings.Number PITCH = LiveSettings.number("thirdPersonCamera.vehiclePitch", "Looking down (degrees)", SECTION, -20.0f, 45.0f, 1.0f, 8.0f);
+    public static final LiveSettings.Number PITCH = LiveSettings.number("thirdPersonCamera.vehiclePitch", "Looking down (degrees)", SECTION, -20.0f, 45.0f, 1.0f, 15.0f);
 
     // A critically damped spring that keeps its own speed: starts and stops gently.
     // Takes how far off the target it is and returns how far off it is after dt.
@@ -74,9 +76,11 @@ public class VehicleCamera {
     static float feltBoom;
     static float sizeBoom;
     static float sizeLift;
+    static float rear;
     static BaseVehicle last;
     static float vx, vy;
     static float fx = 1.0f, fy;
+    static float nose;
     static float offX, offY;
     public static volatile float fovAdd;
 
@@ -87,7 +91,7 @@ public class VehicleCamera {
     static long readAt;
 
     static {
-        DISTANCE.describe("How far the camera sits behind a car of ordinary size. Longer vehicles and trailers move it back, taller ones raise it. The mouse wheel changes it while seated.");
+        DISTANCE.describe("How far the camera sits behind a car of ordinary size. Longer vehicles move it back and taller ones raise it; a trailer does not push it back. The mouse wheel changes it while seated.");
         MOUSE.describe("While seated the view follows the mouse a moment later, so it cannot be yanked about. 0 turns at once.");
         FOLLOW.describe("While driving, the camera swings round behind the vehicle once the mouse rests and the vehicle is moving. Reversing keeps it looking ahead.");
         DELAY.describe("How long the mouse must rest before the camera swings in behind.");
@@ -122,6 +126,12 @@ public class VehicleCamera {
             fx = forward.x / h;
             fy = forward.z / h;
         }
+        float lastNose = nose;
+        VehicleLead.lead(vehicle, 0);
+        nose = (float) Math.atan2(fy, fx) - VehicleLead.turn;
+        fx = (float) Math.cos(nose);
+        fy = (float) Math.sin(nose);
+        float turned = wrap(nose - lastNose);
         vehicle.getLinearVelocity(velocity);
         float dvx = velocity.x - vx;
         float dvy = velocity.z - vy;
@@ -131,6 +141,7 @@ public class VehicleCamera {
             last = vehicle;
             dvx = 0.0f;
             dvy = 0.0f;
+            turned = 0.0f;
             offX = 0.0f;
             offY = 0.0f;
             offXSpring.speed = 0.0f;
@@ -140,7 +151,10 @@ public class VehicleCamera {
         float target = DISTANCE.get();
         shown = shown < 0.0f ? target : shown + (target - shown) * ThirdPersonRig.ease(dt, ThirdPersonRig.ZOOM_TIME);
         feel(vehicle, dt);
-        weight(dvx, dvy, dt);
+        // Close behind the vehicle the same sway is a wide swing of the view.
+        float near = ThirdPersonRig.held >= 0.0f ? Math.min(boom(), ThirdPersonRig.held) : boom();
+        float firm = ThirdPersonRig.firm(near - rear);
+        weight(dvx, dvy, firm, dt);
 
         boolean moved = mouseMoved;
         mouseMoved = false;
@@ -155,10 +169,13 @@ public class VehicleCamera {
         float speed = Math.abs(vehicle.getCurrentSpeedKmHour());
         if (speed >= MOVING_KMH && rested >= DELAY.get()) {
             float pace = Math.min(1.0f, Math.max(0.25f, speed / FULL_KMH));
-            float time = SWING.get() / pace;
+            float time = SWING.get() / pace * ThirdPersonRig.lerp(CLOSE_SWING, 1.0f, firm);
+            // Slower driving swings more gently, but a turn is carried along by the share the
+            // swing is slower, so the view trails a turn by no more than at speed.
+            Look.yaw = wrap(Look.yaw + turned * (1.0f - pace));
             float heading = heading(speed);
             Look.yaw = wrap(heading + yawSpring.step(wrap(Look.yaw - heading), time, dt));
-            float down = (float) Math.toRadians(-PITCH.get());
+            float down = (float) Math.toRadians(-PITCH.get()) - (float) Math.atan2(Math.max(0.0f, sizeLift), LOOK_AHEAD);
             Look.pitch = down + pitchSpring.step(Look.pitch - down, time, dt);
         } else {
             yawSpring.speed = 0.0f;
@@ -182,8 +199,8 @@ public class VehicleCamera {
     // The camera keeps its own speed when the vehicle's changes (half of it sideways, scaled by
     // the speed feel), and a spring pulls it back over the vehicle. Moved by the vehicle's speed rather than its
     // position, so it stays clear of the 100 Hz steps the physics moves the vehicle in.
-    static void weight(float dvx, float dvy, float dt) {
-        float share = FEEL.get() / FEEL_DEFAULT;
+    static void weight(float dvx, float dvy, float firm, float dt) {
+        float share = FEEL.get() / FEEL_DEFAULT * firm;
         float along = (dvx * fx + dvy * fy) * share;
         float side = (dvy * fx - dvx * fy) * SIDE_SHARE * share;
         offXSpring.speed -= along * fx - side * fy;
@@ -239,29 +256,28 @@ public class VehicleCamera {
             length = script.getExtents().z;
             height = script.getExtents().y;
         }
+        // What it tows raises the camera if it is taller, but does not push it back.
         BaseVehicle towed = vehicle.getVehicleTowing();
-        float trailer = 0.0f;
-        if (towed != null && towed.getScript() != null) {
-            trailer = towed.getScript().getExtents().z + HITCH;
-            height = Math.max(height, towed.getScript().getExtents().y);
-        }
-        sizeBoom = length > 0.0f ? (length - REF_LENGTH) * 0.5f + trailer : trailer;
+        if (towed != null && towed.getScript() != null) height = Math.max(height, towed.getScript().getExtents().y);
+        sizeBoom = length > 0.0f ? (length - REF_LENGTH) * 0.5f : 0.0f;
+        rear = (length > 0.0f ? length : REF_LENGTH) * 0.5f;
         sizeLift = height > 0.0f ? (height - REF_HEIGHT) * HEIGHT_LIFT : 0.0f;
     }
 
-    // The point the boom hangs from: the vehicle's centre, lifted, moved by the camera's weight.
     public static void pivot(Frame frame, BaseVehicle vehicle, ThirdPersonRig.Snap snap) {
-        snap.x = vehicle.getX() + offX;
-        snap.y = vehicle.getY() + offY;
+        VehicleLead.lead(vehicle, 0);
+        snap.x = vehicle.getX() + VehicleLead.x + offX;
+        snap.y = vehicle.getY() + VehicleLead.y + offY;
         snap.h = frame.camZ * ThirdPersonRig.LEVEL + frame.eyeY + LIFT + sizeLift;
         snap.distance = boom();
         snap.shoulder = 0.0f;
+        snap.aheadX = 0.0f;
+        snap.aheadY = 0.0f;
         snap.on = true;
     }
 
     public static void wheel(int wheel) {
-        float d = wheel > 0 ? DISTANCE.get() / ThirdPersonZoom.STEP : DISTANCE.get() * ThirdPersonZoom.STEP;
-        DISTANCE.set(Math.max(NEAREST, Math.min(FARTHEST, d)));
+        DISTANCE.set(ThirdPersonRig.wheelStep(DISTANCE.get(), NEAREST, FARTHEST, wheel));
     }
 
     static void feel(BaseVehicle vehicle, float dt) {

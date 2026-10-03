@@ -48,6 +48,10 @@ public class ControllerLook {
     public static void init() {
     }
 
+    static boolean usesPad(IsoPlayer p) {
+        return p != null && p.getJoypadBind() >= 0 && p.getInputMode() == CharacterInputMode.GAMEPAD;
+    }
+
     // Main thread, once a frame.
     public static void update() {
         long now = System.nanoTime();
@@ -55,7 +59,7 @@ public class ControllerLook {
         last = now;
         IsoPlayer p = IsoPlayer.players[0];
         int id = p == null ? -1 : p.getJoypadBind();
-        boolean pad = id >= 0 && p.getInputMode() == CharacterInputMode.GAMEPAD;
+        boolean pad = usesPad(p);
         boolean panel = pad && panelHasPad(p);
         boolean on = pad && !panel && View.enabled && Look.captured && !FreeCam.active
                 && !p.isDead() && !aimsOnRightStick();
@@ -157,12 +161,13 @@ public class ControllerLook {
         }
     }
 
-    // Viewpoint's loot panel would sit over the game's loot window the controller opened.
+    // Viewpoint's loot panel would sit over the game's loot window the controller opened, and
+    // over a radial or context menu.
     @Patch(className = "viewpoint.interact.LootMenu", methodName = "player")
     public static class Patch_lootPlayer {
         @Patch.OnExit
         public static void exit(@Patch.Return(readOnly = false) IsoPlayer ret) {
-            if (ret != null && ControllerLook.panelHasPad) ret = null;
+            if (ret != null && (ControllerLook.panelHasPad || MenuCursor.holds())) ret = null;
         }
     }
 

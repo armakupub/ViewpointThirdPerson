@@ -4,7 +4,9 @@ import me.zed_0xff.zombie_buddy.Exposer;
 import viewpoint.core.View;
 import viewpoint.input.ThirdPerson;
 import viewpoint.platform.KeyBind;
+import viewpoint.platform.KeyInput;
 import viewpoint.platform.Keys;
+import zombie.characters.IsoPlayer;
 
 @Exposer.LuaClass
 public class ViewpointThirdPerson {
@@ -46,6 +48,25 @@ public class ViewpointThirdPerson {
 
     public static boolean lootPanelTake() {
         return PadLoot.take();
+    }
+
+    // Viewpoint's loot window key, which Viewpoint leaves to the game while its loot panel is not
+    // up; it opens the player's own inventory then.
+    public static boolean inventoryKey(double key) {
+        IsoPlayer p = IsoPlayer.players[0];
+        return InventoryKey.ON.get() && View.enabled && p != null && !p.isDead() && !ControllerLook.usesPad(p)
+                && KeyInput.menu((int) key) == Keys.LOOT_WINDOW;
+    }
+
+    // True if the cursor was held and is free now.
+    public static boolean freeCursor() {
+        if (WindowCursor.cursorMode()) return false;
+        WindowCursor.setCursorMode(true);
+        return true;
+    }
+
+    public static void holdCursor() {
+        WindowCursor.setCursorMode(false);
     }
 
     public static boolean shoulderPressed() {

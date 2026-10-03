@@ -7,6 +7,37 @@ end
 installPreset()
 Events.OnMainMenuEnter.Add(installPreset)
 
+-- Viewpoint's loot window key opens the player's own inventory, with the cursor free, when
+-- Viewpoint's loot panel is not up (Viewpoint takes the key then); again to close it. Shown the
+-- way Viewpoint shows its loot window: unfolded, and put back as it was.
+local inventoryOpen, inventoryWasHidden, inventoryFreed = false, false, false
+
+local function onInventoryKey(key)
+    if not ViewpointThirdPerson.inventoryKey(key) then return end
+    -- The key's game uses: the chat's streams and the furniture tool's mode.
+    if ISChat and ISChat.focused then return end
+    if getCell() and getCell():getDrag(0) then return end
+    local inv = getPlayerInventory(0)
+    if not inv then return end
+    if inventoryOpen and inv:getIsVisible() then
+        if inventoryWasHidden then
+            inv:setVisible(false)
+        elseif not inv.pin then
+            inv:collapseNow()
+        end
+        if inventoryFreed then ViewpointThirdPerson.holdCursor() end
+        inventoryOpen, inventoryFreed = false, false
+        return
+    end
+    inventoryWasHidden = not inv:getIsVisible()
+    inv:setVisible(true)
+    inv.isCollapsed = false
+    inv:clearMaxDrawHeight()
+    inv.collapseCounter = 0
+    inventoryFreed = ViewpointThirdPerson.freeCursor() or (inventoryOpen and inventoryFreed)
+    inventoryOpen = true
+end
+
 local wrapped = false
 
 Events.OnGameStart.Add(function()
@@ -14,6 +45,7 @@ Events.OnGameStart.Add(function()
     ViewpointThirdPerson.init()
     if wrapped then return end
     wrapped = true
+    Events.OnKeyStartPressed.Add(onInventoryKey)
 
     -- D-pad down selects in Viewpoint's loot panel while it shows, in place of the emote wheel.
     local displayDown = ISDPadWheels.onDisplayDown

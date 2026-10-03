@@ -8,10 +8,12 @@ public class Patch_Look {
     @Patch.OnEnter
     public static void enter() {
         VehicleCamera.beforeRead();
+        LookAround.beforeRead();
     }
 
     @Patch.OnExit
     public static void exit() {
         VehicleCamera.afterRead();
+        LookAround.afterRead();
     }
 }

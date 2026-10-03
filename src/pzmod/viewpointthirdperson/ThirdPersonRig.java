@@ -2,8 +2,10 @@ package pzmod.viewpointthirdperson;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import viewpoint.core.CameraSquares;
 import viewpoint.core.Frame;
@@ -26,16 +28,24 @@ public class ThirdPersonRig {
     static final float MIN_DISTANCE = 0.2f;
     static final float MAX_DISTANCE = 10.0f;
     static final float ZOOM_TIME = 0.08f;
-    static final float INDOOR_TIME = 0.4f;
-    static final float SETTLE = 0.5f;
+    // In quicker than out: indoors the room is close at once, outdoors there is time.
+    static final float INDOOR_IN_TIME = 0.12f;
+    static final float INDOOR_OUT_TIME = 0.4f;
+    static final float SETTLE_IN = 0.15f;
+    static final float SETTLE_OUT = 0.25f;
     static final long GRACE_NANOS = 3_000_000_000L;
     static final float VELOCITY_WINDOW = 0.15f;
     static final int TRAIL = 128;
+    // Closer than FIRM_FAR the follow lag fades out, gone at FIRM_NEAR: the same lag in metres
+    // is a larger angle the nearer the camera hangs.
+    static final float FIRM_NEAR = 0.5f;
+    static final float FIRM_FAR = 2.0f;
 
     public static final LiveSettings.Number DISTANCE = LiveSettings.number("thirdPersonCamera.distance", "Distance", SECTION, 0.3f, 8.0f, 0.05f, 2.0f);
     public static final LiveSettings.Number ZOOM_NEAR = LiveSettings.number("thirdPersonCamera.zoomNearest", "Mouse wheel: nearest", SECTION, 0.3f, 8.0f, 0.05f, 1.5f);
     public static final LiveSettings.Number ZOOM_FAR = LiveSettings.number("thirdPersonCamera.zoomFarthest", "Mouse wheel: farthest", SECTION, 0.3f, 8.0f, 0.05f, 4.0f);
-    public static final LiveSettings.Number INDOOR_DISTANCE = LiveSettings.number("thirdPersonCamera.indoorDistance", "Indoors: zoom in to", SECTION, 0.3f, 8.0f, 0.05f, 2.0f);
+    public static final LiveSettings.Number ZOOM_STEPS = LiveSettings.number("thirdPersonCamera.zoomSteps", "Mouse wheel: steps", SECTION, 1.0f, 20.0f, 1.0f, 6.0f);
+    public static final LiveSettings.Number INDOOR_DISTANCE = LiveSettings.number("thirdPersonCamera.indoorDistance", "Indoors: zoom in to", SECTION, 0.3f, 8.0f, 0.05f, 0.5f);
     public static final LiveSettings.Number RECOVER = LiveSettings.number("thirdPersonCamera.collisionRecover", "Collision: backing out (s)", SECTION, 0.0f, 1.0f, 0.01f, 0.35f);
     public static final LiveSettings.Number HEIGHT = LiveSettings.number("thirdPersonCamera.height", "Height above the eyes", SECTION, -0.8f, 1.5f, 0.01f, 0.15f);
     public static final LiveSettings.Choice SIDE = LiveSettings.choice("thirdPersonCamera.side", "Shoulder", SECTION, new String[]{"Right", "Left"}, 0);
@@ -43,13 +53,19 @@ public class ThirdPersonRig {
     public static final LiveSettings.Number LOOK_UP = LiveSettings.number("thirdPersonCamera.lookUpCloser", "Closer when looking up", SECTION, 0.0f, 0.9f, 0.05f, 0.5f);
     public static final LiveSettings.Number FOLLOW = LiveSettings.number("thirdPersonCamera.follow", "Follow smoothing (s)", SECTION, 0.0f, 0.5f, 0.01f, 0.06f);
     public static final LiveSettings.Number FOLLOW_HEIGHT = LiveSettings.number("thirdPersonCamera.followHeight", "Height smoothing (s)", SECTION, 0.0f, 0.8f, 0.01f, 0.2f);
-    public static final LiveSettings.Number MELEE_DISTANCE = LiveSettings.number("thirdPersonCamera.meleeDistance", "Combat stance: distance (share of Distance)", COMBAT, 0.5f, 2.0f, 0.05f, 1.1f);
-    public static final LiveSettings.Number MELEE_SHOULDER = LiveSettings.number("thirdPersonCamera.meleeShoulder", "Combat stance: shoulder offset", COMBAT, 0.0f, 1.5f, 0.01f, 0.15f);
-    public static final LiveSettings.Number FIREARM_DISTANCE = LiveSettings.number("thirdPersonCamera.firearmDistance", "Firearm aiming: distance", COMBAT, 0.3f, 5.0f, 0.05f, 2.0f);
+    public static final LiveSettings.Number MELEE_DISTANCE = LiveSettings.number("thirdPersonCamera.meleeDistance", "Combat stance outdoors: distance (share)", COMBAT, 0.5f, 2.0f, 0.05f, 1.1f);
+    public static final LiveSettings.Number MELEE_INDOORS = LiveSettings.number("thirdPersonCamera.meleeDistanceIndoors", "Combat stance indoors: distance (share)", COMBAT, 0.5f, 2.0f, 0.05f, 0.8f);
+    public static final LiveSettings.Number MELEE_SHOULDER = LiveSettings.number("thirdPersonCamera.meleeShoulder", "Combat stance: shoulder offset", COMBAT, 0.0f, 1.5f, 0.01f, 0.2f);
+    public static final LiveSettings.Number FIREARM_DISTANCE = LiveSettings.number("thirdPersonCamera.firearmDistance", "Firearm aiming outdoors: distance", COMBAT, 0.3f, 5.0f, 0.05f, 1.6f);
+    public static final LiveSettings.Number FIREARM_INDOORS = LiveSettings.number("thirdPersonCamera.firearmDistanceIndoors", "Firearm aiming indoors: distance", COMBAT, 0.3f, 5.0f, 0.05f, 0.6f);
     public static final LiveSettings.Number FIREARM_SHOULDER = LiveSettings.number("thirdPersonCamera.firearmShoulder", "Firearm aiming: shoulder offset", COMBAT, 0.0f, 1.5f, 0.01f, 0.5f);
     public static final LiveSettings.Number FIREARM_FOV = LiveSettings.number("thirdPersonCamera.firearmFovChange", "Firearm aiming: field of view change", COMBAT, -40.0f, 10.0f, 1.0f, -5.0f);
     public static final LiveSettings.Number STANCE_TIME = LiveSettings.number("thirdPersonCamera.stanceTime", "Stance blend (s)", COMBAT, 0.0f, 1.0f, 0.01f, 0.12f);
 
+    static final Set<String> STEADY;
+    static final LiveSettings.Number HEAD_MOVEMENT;
+    // EyeMotion's own blend into and out of the steady states, per second.
+    static final float STEADY_RATE = 5.0f;
     static final MethodHandle REACH;
     static final MethodHandle KEEP_CLEAR;
     public static volatile boolean ok;
@@ -60,7 +76,12 @@ public class ThirdPersonRig {
     public static volatile float firearmEased;
     static boolean following;
     static float pivotX, pivotY, pivotH;
+    static float steadyEye;
+    static float steadied;
     static float lagX, lagY;
+    static float velX, velY;
+    static float lastYaw = Float.NaN;
+    static float yawRate;
     static float stepAhead;
     static double clock;
     static final double[] trailT = new double[TRAIL];
@@ -82,7 +103,8 @@ public class ThirdPersonRig {
 
     public static final class Snap {
         public volatile boolean on;
-        public float x, y, h, distance, shoulder, held;
+        public float x, y, h, bodyX, bodyY, distance, shoulder, held;
+        public float aheadX, aheadY, clearX, clearY, clearH;
     }
 
     static final Map<CameraSquares, Snap> snaps = new ConcurrentHashMap<>();
@@ -93,18 +115,41 @@ public class ThirdPersonRig {
         INDOOR_DISTANCE.describe("Going under a roof or into a room brings the camera in to this distance, if it was further out; the wheel then zooms freely. Back outside, it returns to Distance.");
         RECOVER.describe("After a wall pushed the camera in, how long it takes to back out again. It always moves in at once. On foot and in vehicles.");
         ZOOM_FAR.describe("The farthest the mouse wheel takes the camera from the shoulder.");
-        HEIGHT.describe("Where the camera pivots, above (or below) the eyes. Follows a crouch, not the bob of each step.");
-        SIDE.describe("Which shoulder the camera looks over. The swap shoulder key (Keys, Third person camera) flips it.");
+        ZOOM_STEPS.describe("How many turns of the mouse wheel take the camera from nearest to farthest, on foot and in vehicles. Each step feels the same size, near or far.");
+        HEIGHT.describe("Where the camera pivots, above (or below) the eyes. Follows a crouch; the head's motion only as far as Viewpoint's Head movement (Controls, Camera) asks.");
+        SIDE.describe("Which shoulder the camera looks over. The swap shoulder key (Third person, Keys) flips it.");
         SHOULDER.describe("How far beside the body the camera sits while walking about.");
         LOOK_UP.describe("Looking up pulls the camera in by this share of its distance, so it stays off the ground.");
         FOLLOW.describe("How long the camera takes to catch up with the body: 0 is fixed to it.");
         FOLLOW_HEIGHT.describe("How long the camera takes to follow the body up and down: crouching, stairs.");
-        MELEE_DISTANCE.describe("Distance in the combat stance without a firearm, as a share of Distance: above 1 backs off to see more round the body.");
+        MELEE_DISTANCE.describe("Distance in the combat stance without a firearm outdoors, as a share of the distance before it: above 1 backs off to see more round the body.");
+        MELEE_INDOORS.describe("The same under a roof or in a room: below 1 moves in, so the swing crosses the screen.");
         MELEE_SHOULDER.describe("Shoulder offset in the combat stance without a firearm: low keeps both flanks in view.");
-        FIREARM_DISTANCE.describe("Distance while aiming a firearm.");
+        FIREARM_DISTANCE.describe("Distance while aiming a firearm outdoors. Aiming never takes the camera further out than it already is.");
+        FIREARM_INDOORS.describe("The same under a roof or in a room.");
         FIREARM_SHOULDER.describe("Shoulder offset while aiming a firearm.");
         FIREARM_FOV.describe("Degrees the third-person field of view narrows (below 0) or widens while aiming a firearm. A small change keeps your surroundings in view.");
         STANCE_TIME.describe("How long the camera takes to move into and out of the combat stance or firearm aiming.");
+        Set<String> steady = null;
+        try {
+            Field f = Class.forName("viewpoint.input.Controls").getDeclaredField("STEADY_STATES");
+            f.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            Set<String> set = (Set<String>) f.get(null);
+            steady = set;
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            System.out.println("[ViewpointThirdPerson] head motion always on, Viewpoint changed: " + e);
+        }
+        STEADY = steady;
+        LiveSettings.Number headMovement = null;
+        try {
+            Field f = Class.forName("viewpoint.input.Controls").getDeclaredField("HEAD_MOVEMENT");
+            f.setAccessible(true);
+            headMovement = (LiveSettings.Number) f.get(null);
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            System.out.println("[ViewpointThirdPerson] camera steady on the body, Viewpoint changed: " + e);
+        }
+        HEAD_MOVEMENT = headMovement;
         MethodHandle reach = null;
         MethodHandle keepClear = null;
         try {
@@ -126,6 +171,7 @@ public class ThirdPersonRig {
 
     public static void init() {
         VehicleCamera.init();
+        InventoryKey.init();
         ControllerLook.init();
     }
 
@@ -171,6 +217,7 @@ public class ThirdPersonRig {
                 snap.on = false;
                 held = -1.0f;
             }
+            LookAround.reset();
             following = false;
             melee = 0.0f;
             firearm = 0.0f;
@@ -181,6 +228,7 @@ public class ThirdPersonRig {
         if (seated) held = -1.0f;
         seated = false;
         VehicleCamera.reset();
+        LookAround.update(chr, dt);
 
         boolean aiming = chr.isAiming();
         HandWeapon weapon = aiming ? chr.getUseHandWeapon() : null;
@@ -194,7 +242,7 @@ public class ThirdPersonRig {
         IsoGridSquare sq = chr.getCurrentSquare();
         boolean under = sq != null && (sq.isInARoom() || !sq.isOutside());
         unsettled = under == inside ? 0.0f : unsettled + dt;
-        if (unsettled >= SETTLE) {
+        if (unsettled >= (under ? SETTLE_IN : SETTLE_OUT)) {
             unsettled = 0.0f;
             inside = under;
             if (!inside) {
@@ -203,15 +251,23 @@ public class ThirdPersonRig {
                 indoorZoom = Math.min(DISTANCE.get(), INDOOR_DISTANCE.get());
             }
         }
-        indoor += ((inside ? 1.0f : 0.0f) - indoor) * ease(dt, INDOOR_TIME);
+        indoor += ((inside ? 1.0f : 0.0f) - indoor) * ease(dt, inside ? INDOOR_IN_TIME : INDOOR_OUT_TIME);
         float base = lerp(DISTANCE.get(), indoorDistance(), smooth(indoor));
         shownDistance = shownDistance < 0.0f ? base : shownDistance + (base - shownDistance) * ease(dt, ZOOM_TIME);
         float roomy = shownDistance;
         side += ((SIDE.get() == 0 ? 1.0f : -1.0f) - side) * ease(dt, SIDE_TIME);
 
-        float tx = frame.camX;
-        float ty = frame.camY;
-        float th = frame.camZ * LEVEL + frame.eyeY + HEIGHT.get();
+        // Viewpoint's eye follows the head by Head movement in steady states but fully through a
+        // swing, a shove or a climb (EyeMotion); the camera follows by Head movement throughout.
+        float headMovement = HEAD_MOVEMENT != null ? HEAD_MOVEMENT.get() : 0.0f;
+        boolean steady = STEADY == null || STEADY.contains(chr.getCurrentActionContextStateName());
+        steadied = !following ? (steady ? 1.0f : 0.0f)
+                : steadied + Math.max(-STEADY_RATE * dt, Math.min(STEADY_RATE * dt, (steady ? 1.0f : 0.0f) - steadied));
+        float motion = headMovement / Math.max(1.0e-6f, 1.0f - steadied * (1.0f - headMovement));
+        if (!following || steady) steadyEye = frame.eyeY;
+        float tx = frame.camX - frame.eyeX * motion;
+        float ty = frame.camY - frame.eyeZ * motion;
+        float th = frame.camZ * LEVEL + lerp(steadyEye, frame.eyeY, motion) + HEIGHT.get();
         float dx = tx - pivotX;
         float dy = ty - pivotY;
         if (!following || dx * dx + dy * dy > SNAP_DISTANCE * SNAP_DISTANCE || Math.abs(th - pivotH) > LEVEL) {
@@ -223,16 +279,29 @@ public class ThirdPersonRig {
         } else {
             pivotH += (th - pivotH) * ease(dt, FOLLOW_HEIGHT.get());
         }
-        follow(tx, ty, step, FOLLOW.get() * (1.0f - 0.7f * a));
+        float in = smooth(indoor);
+        float meleeShare = lerp(MELEE_DISTANCE.get(), MELEE_INDOORS.get(), in);
+        float gunDistance = Math.min(roomy, lerp(FIREARM_DISTANCE.get(), FIREARM_INDOORS.get(), in));
+        float distance = Math.max(MIN_DISTANCE, Math.min(MAX_DISTANCE,
+                lerp(roomy * lerp(1.0f, meleeShare, m), gunDistance, a)));
+        float near = held >= 0.0f ? Math.min(distance, held) : distance;
+        follow(tx, ty, step, FOLLOW.get() * (1.0f - 0.7f * a) * firm(near));
         pivotX = tx - lagX;
         pivotY = ty - lagY;
         snap.x = pivotX;
         snap.y = pivotY;
         snap.h = pivotH;
-        float distance = lerp(roomy * lerp(1.0f, MELEE_DISTANCE.get(), m), FIREARM_DISTANCE.get(), a);
-        snap.distance = Math.max(MIN_DISTANCE, Math.min(MAX_DISTANCE, distance));
+        snap.bodyX = tx;
+        snap.bodyY = ty;
+        snap.aheadX = velX * AHEAD;
+        snap.aheadY = velY * AHEAD;
+        snap.distance = distance;
         snap.shoulder = lerp(lerp(SHOULDER.get(), MELEE_SHOULDER.get(), m), FIREARM_SHOULDER.get(), a) * side;
         snap.on = true;
+    }
+
+    static float firm(float near) {
+        return smooth(Math.max(0.0f, Math.min(1.0f, (near - FIRM_NEAR) / (FIRM_FAR - FIRM_NEAR))));
     }
 
     // The pivot trails the body by its velocity over a short window, on the game's clock rather
@@ -252,6 +321,8 @@ public class ThirdPersonRig {
         double span = clock - trailT[first];
         float vx = span > 1.0e-4 ? (float) ((x - trailX[first]) / span) : 0.0f;
         float vy = span > 1.0e-4 ? (float) ((y - trailY[first]) / span) : 0.0f;
+        velX = vx;
+        velY = vy;
         float k = ease(step, time);
         lagX += (vx * time - lagX) * k;
         lagY += (vy * time - lagY) * k;
@@ -260,7 +331,8 @@ public class ThirdPersonRig {
     public static float gridBoom(boolean seated, float boom) {
         if (!ok) return boom;
         if (seated) return VehicleCamera.reach();
-        float distance = Math.max(Math.max(Math.max(DISTANCE.get(), INDOOR_DISTANCE.get()), shownDistance) * Math.max(1.0f, MELEE_DISTANCE.get()), FIREARM_DISTANCE.get());
+        float distance = Math.max(Math.max(DISTANCE.get(), INDOOR_DISTANCE.get()), shownDistance)
+                * Math.max(1.0f, Math.max(MELEE_DISTANCE.get(), MELEE_INDOORS.get()));
         return Math.min(MAX_DISTANCE, distance)
                 + Math.max(SHOULDER.get(), Math.max(MELEE_SHOULDER.get(), FIREARM_SHOULDER.get())) + 1.0f;
     }
@@ -272,6 +344,12 @@ public class ThirdPersonRig {
         return fov + (float) Math.toRadians(FIREARM_FOV.get()) * a;
     }
 
+    // A wall the boom will meet as the body moves or the view turns pulls it in beforehand, so it
+    // seldom has to snap in.
+    static final float AHEAD = 0.2f;
+    static final float AHEAD_TIME = 0.1f;
+    static final float MAX_TURN_AHEAD = (float) Math.toRadians(45.0);
+    static final float CLEAR_TIME = 0.08f;
     static final float HEAD_CLEAR = 0.35f;
     static final float LIFT = 0.2f;
     static final float CLEAR = 0.45f;
@@ -339,8 +417,10 @@ public class ThirdPersonRig {
             float d = s.distance * (1.0f - LOOK_UP.get() * Math.max(0.0f, sp));
             // Viewpoint hides the head within HEAD_CLEAR of the camera: swinging between
             // shoulders, or a short boom with little offset, backs off until it is clear.
-            float vx = sx - headX;
-            float vy = sY - headY;
+            // Measured from the body, not the lagging pivot, so the boom does not pump with the
+            // lag of each step.
+            float vx = s.bodyX - cs.x - sy * s.shoulder - headX;
+            float vy = s.bodyY - cs.y + cy * s.shoulder - headY;
             float vh = ph - headH - LIFT;
             float along = vx * cy * cp + vy * sy * cp + vh * sp;
             float disc = along * along - (vx * vx + vy * vy + vh * vh) + CLEAR * CLEAR;
@@ -351,11 +431,17 @@ public class ThirdPersonRig {
             r = reach(cs, sx, sY, ph, bx, by, bh);
             float len = d * r;
             if (capture) {
+                float ahead = ahead(cs, s, sx, sY, ph, yaw, cp, sp, d);
+                float target = Math.min(len, ahead);
                 // In at once, out slowly; but a boom that was not pushed in follows the zoom freely.
-                if (held < 0.0f || len <= held || (r >= 1.0f && held >= heldFull - 1.0e-3f)) {
+                if (held < 0.0f || len <= held) {
+                    held = len;
+                } else if (target < held) {
+                    held += (target - held) * ease(lastDt, AHEAD_TIME);
+                } else if (r >= 1.0f && ahead >= d - 1.0e-3f && held >= heldFull - 1.0e-3f) {
                     held = len;
                 } else {
-                    held += (len - held) * ease(lastDt, RECOVER.get());
+                    held += (target - held) * ease(lastDt, RECOVER.get());
                 }
                 heldFull = d;
                 s.held = held;
@@ -366,13 +452,43 @@ public class ThirdPersonRig {
             out[0] = sx - cy * cp * len;
             out[1] = sY - sy * cp * len;
             out[2] = ph - sp * len;
-            KEEP_CLEAR.invokeExact(cs, out);
+            if (capture) {
+                float x = out[0], y = out[1], h = out[2];
+                KEEP_CLEAR.invokeExact(cs, out);
+                float k = ease(lastDt, CLEAR_TIME);
+                s.clearX += (out[0] - x - s.clearX) * k;
+                s.clearY += (out[1] - y - s.clearY) * k;
+                s.clearH += (out[2] - h - s.clearH) * k;
+                out[0] = x;
+                out[1] = y;
+                out[2] = h;
+            }
+            out[0] += s.clearX;
+            out[1] += s.clearY;
+            out[2] += s.clearH;
             return true;
         } catch (Throwable t) {
             ok = false;
             System.out.println("[ViewpointThirdPerson] third-person rig off after error: " + t);
             return false;
         }
+    }
+
+    static float ahead(CameraSquares cs, Snap s, float sx, float sY, float ph, float yaw, float cp, float sp, float d) throws Throwable {
+        if (!Float.isNaN(lastYaw) && lastDt > 0.0f) {
+            float turn = (float) Math.atan2(Math.sin(yaw - lastYaw), Math.cos(yaw - lastYaw));
+            yawRate += (turn / lastDt - yawRate) * ease(lastDt, VELOCITY_WINDOW);
+        }
+        lastYaw = yaw;
+        float turnAhead = Math.max(-MAX_TURN_AHEAD, Math.min(MAX_TURN_AHEAD, yawRate * AHEAD));
+        if (Math.abs(turnAhead) < 1.0e-3f && s.aheadX * s.aheadX + s.aheadY * s.aheadY < 1.0e-6f) return d;
+        float r = reach(cs, sx, sY, ph, sx + s.aheadX, sY + s.aheadY, ph);
+        float qx = sx + s.aheadX * r;
+        float qy = sY + s.aheadY * r;
+        float y = yaw + turnAhead;
+        float cy = (float) Math.cos(y);
+        float sy = (float) Math.sin(y);
+        return d * reach(cs, qx, qy, ph, qx - cy * cp * d, qy - sy * cp * d, ph - sp * d);
     }
 
     static float reach(CameraSquares cs, float x0, float y0, float h0, float x1, float y1, float h1) throws Throwable {
@@ -385,10 +501,25 @@ public class ThirdPersonRig {
         float near = Math.min(ZOOM_NEAR.get(), ZOOM_FAR.get());
         float far = Math.max(ZOOM_NEAR.get(), ZOOM_FAR.get());
         boolean in = inside && indoorZoom >= 0.0f;
-        float d = in ? indoorZoom : DISTANCE.get();
-        d = Math.max(near, Math.min(far, wheel > 0 ? d / ThirdPersonZoom.STEP : d * ThirdPersonZoom.STEP));
+        // Indoors the wheel must reach back in to where entering put the camera.
+        if (in) near = Math.min(near, INDOOR_DISTANCE.get());
+        if (far - near < 1.0e-3f) return;
+        float d = wheelStep(in ? indoorZoom : DISTANCE.get(), near, far, wheel);
         if (in) indoorZoom = d;
         else DISTANCE.set(d);
+    }
+
+    // Steps evenly spaced on a log scale, so they feel alike; a distance between two steps
+    // (set by hand, or the indoor distance) goes to the next one in the wheel's direction.
+    // Distances are stored rounded to their 0.05 slider step, so a step reads back off by that.
+    static float wheelStep(float d, float near, float far, int wheel) {
+        int steps = Math.max(1, Math.round(ZOOM_STEPS.get()));
+        double size = Math.log(far / near) / steps;
+        double at = Math.log(Math.max(near, Math.min(far, d)) / near) / size;
+        int nearest = (int) Math.round(at);
+        boolean onStep = Math.abs(near * Math.exp(nearest * size) - d) <= 0.05;
+        int step = onStep ? nearest + (wheel > 0 ? -1 : 1) : (int) (wheel > 0 ? Math.floor(at) : Math.ceil(at));
+        return (float) (near * Math.exp(Math.max(0, Math.min(steps, step)) * size));
     }
 
     static float indoorDistance() {

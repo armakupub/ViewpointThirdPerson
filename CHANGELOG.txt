@@ -1,6 +1,16 @@
 Third Person Camera for Project Viewpoint - Changelog
 =====================================================
 
+0.3.0 - 2026-10-03
+  - New defaults after long testing, above all for tight interiors. Settings still at the old defaults switch over once, values you changed stay.
+  - New key, unbound by default: look around. While held, the mouse turns the camera round your character, who keeps walking the same way. Letting go or aiming brings it back behind.
+  - Better wall collision: the camera pulls in ahead of a wall it is about to meet instead of snapping in, and no longer pumps with each step.
+  - Vehicles: the camera follows turns much better at low speed and judders less at high frame rates, above all in turns, trailers included. It can come closer, and a trailer no longer pushes it back.
+  - Menus and windows free the cursor and lock it again once closed. With Project Viewpoint QOL loaded, QOL does this.
+  - Combat stance and firearm aiming have their own distances indoors and outdoors.
+  - New settings: the number of mouse wheel steps, and the loot window key (Tab) always opening your inventory.
+  - Head motion follows Viewpoint's Head movement setting. The keys moved to the Third person tab.
+
 0.2.0 - 2026-10-02
   - Controller support, within the game's own layout. While Viewpoint's view is on, the right stick turns the camera, on foot and in vehicles. Aim with a light pull on RT, or with LT in the new preset. The view turns slower while aiming.
   - On foot with a controller the character turns to wherever the left stick points and runs there, towards the camera too. Once the right stick rests, the camera swings in behind.
