@@ -23,8 +23,16 @@ public class MenuCursor {
         if (held) Look.wantCapture = false;
     }
 
-    // Viewpoint shows its loot panel only while it holds the mouse, and builds it before update().
     public static boolean holds() {
+        return MouseKeyboard.FREE_CURSOR.get() && menuUp() && !ViewpointInterface.radial();
+    }
+
+    // Viewpoint shows its loot panel only while it holds the mouse, and builds it before update().
+    public static boolean hidesLoot() {
+        return MouseKeyboard.HIDE_LOOT.get() && menuUp();
+    }
+
+    private static boolean menuUp() {
         return !ControllerLook.usesPad(IsoPlayer.players[0]) && !Qol.loaded() && menuShown();
     }
 

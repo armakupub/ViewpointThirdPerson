@@ -6,17 +6,26 @@ import zombie.Lua.LuaManager;
 import zombie.input.GameKeyboard;
 
 // Project Viewpoint QOL (WS 3811256204) frees the cursor for windows and menus under its own options, and
-// cycles the hotbar on its modifier key + wheel. Its options table is a Lua global.
+// cycles the hotbar and changes the field of view on modifier keys + wheel. Its options table is a Lua global.
 public class Qol {
     public static boolean loaded() {
         return options() != null;
     }
 
     public static boolean hotbarWheel() {
+        return wheelWith("enableHotbarWheel", "hotbarModifierKey", Keyboard.KEY_LMENU);
+    }
+
+    // Modifier + wheel changes QOL's field of view, in both views.
+    public static boolean fovWheel() {
+        return wheelWith("enableMouseWheelZoom", "zoomFovModifierKey", Keyboard.KEY_LCONTROL);
+    }
+
+    private static boolean wheelWith(String enabled, String modifier, int fallback) {
         KahluaTable options = options();
-        if (options == null || Boolean.FALSE.equals(options.rawget("enableHotbarWheel"))) return false;
-        Object set = options.rawget("hotbarModifierKey");
-        int key = set instanceof Double ? ((Double) set).intValue() : Keyboard.KEY_LMENU;
+        if (options == null || Boolean.FALSE.equals(options.rawget(enabled))) return false;
+        Object set = options.rawget(modifier);
+        int key = set instanceof Double ? ((Double) set).intValue() : fallback;
         return key > 0 && (GameKeyboard.isKeyDown(key) || GameKeyboard.isKeyDown(otherSide(key)));
     }
 

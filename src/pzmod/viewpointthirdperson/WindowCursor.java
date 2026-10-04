@@ -47,7 +47,8 @@ public class WindowCursor {
 
     public static void update() {
         IsoPlayer p = IsoPlayer.players[0];
-        if (broken || !View.enabled || p == null || p.isDead() || ControllerLook.usesPad(p) || Qol.loaded()) {
+        if (broken || !MouseKeyboard.FREE_CURSOR.get() || !View.enabled || p == null || p.isDead() || ControllerLook.usesPad(p)
+                || Qol.loaded()) {
             started = false;
             freed = false;
             shown.clear();

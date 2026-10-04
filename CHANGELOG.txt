@@ -1,6 +1,11 @@
 Third Person Camera for Project Viewpoint - Changelog
 =====================================================
 
+0.3.1 - 2026-10-04
+  - Better compatibility with Viewpoint - Interface and Project Viewpoint QOL.
+  - New settings under Mouse and keyboard: "Menus and windows free the cursor" and "Radial menus hide Viewpoint's loot menu".
+  - Fixed a thread race in the third-person camera.
+
 0.3.0 - 2026-10-03
   - New defaults after long testing, above all for tight interiors. Settings still at the old defaults switch over once, values you changed stay.
   - New key, unbound by default: look around. While held, the mouse turns the camera round your character, who keeps walking the same way. Letting go or aiming brings it back behind.

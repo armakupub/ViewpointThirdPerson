@@ -56,8 +56,10 @@ description=[*]First person: the controller support, the loot panel buttons and 
 description=[*]Split screen: only player one gets Viewpoint's view, player two stays isometric. This is a limit in Viewpoint.
 description=[*]Aiming from a vehicle is off while Viewpoint's view is on, for now.
 description=[*]Project Viewpoint QOL: some features of Third Person Camera switch off to avoid conflicts. In third person the mouse wheel moves the camera instead of QOL's zoom.
-description=[*]Not meant to run together with Controller Aim for Viewpoint, both change the controller's aiming.
+description=[*]Not meant to run together with Controller Aim for Viewpoint, which changes the controller's aiming, or Project Viewpoint Controller Support, which changes the controller's camera and aiming.
 description=[/list]
+description=
+description=Many Viewpoint add-ons hook into the same places, even when they do different things. If something here stops working, another add-on may be the cause. I add compatibility for widely used mods, for the rest please report it.
 description=
 description=[h1]Bugs and ideas[/h1]
 description=Please report them at [url=https://github.com/armakupub/ViewpointThirdPerson/issues]github.com/armakupub/ViewpointThirdPerson/issues[/url], ideally with screenshots and the console.txt of that session (in your Zomboid folder).

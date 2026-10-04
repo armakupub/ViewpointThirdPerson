@@ -12,11 +12,27 @@ Events.OnMainMenuEnter.Add(installPreset)
 -- way Viewpoint shows its loot window: unfolded, and put back as it was.
 local inventoryOpen, inventoryWasHidden, inventoryFreed = false, false, false
 
+-- Viewpoint - Interface hides the game's inventory window and shows its own tab for the game's
+-- inventory key; this key does the same then, through its public API.
+local function interfaceInventory()
+    local ui = ViewpointUI
+    if not (ui and ui.isActive and ui.Hub and ui.Hub.open) then return false end
+    local ok, active = pcall(ui.isActive)
+    if not (ok and active) then return false end
+    if ui.Hub.isOpen() then
+        ui.Hub.close()
+    else
+        ui.Hub.open("inventory")
+    end
+    return true
+end
+
 local function onInventoryKey(key)
     if not ViewpointThirdPerson.inventoryKey(key) then return end
     -- The key's game uses: the chat's streams and the furniture tool's mode.
     if ISChat and ISChat.focused then return end
     if getCell() and getCell():getDrag(0) then return end
+    if interfaceInventory() then return end
     local inv = getPlayerInventory(0)
     if not inv then return end
     if inventoryOpen and inv:getIsVisible() then

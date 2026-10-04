@@ -171,7 +171,7 @@ public class ThirdPersonRig {
 
     public static void init() {
         VehicleCamera.init();
-        InventoryKey.init();
+        MouseKeyboard.init();
         ControllerLook.init();
     }
 
@@ -354,7 +354,8 @@ public class ThirdPersonRig {
     static final float LIFT = 0.2f;
     static final float CLEAR = 0.45f;
     static final float[] captured = new float[3];
-    static final float[] viewed = new float[3];
+    // view() runs on the render thread (SceneDrawer) and the main thread (WorldText) at once.
+    static final ThreadLocal<float[]> VIEWED = ThreadLocal.withInitial(() -> new float[3]);
 
     // Viewpoint's capture() placed the camera already; this redoes it from our pivot and
     // overwrites what capture() publishes. Main thread.
@@ -373,9 +374,10 @@ public class ThirdPersonRig {
                 + up * up >= HEAD_CLEAR * HEAD_CLEAR;
     }
 
-    // Same for view(), with the mouse as it is just before drawing. Render thread.
+    // Same for view(), with the mouse as it is just before drawing.
     public static void afterView(Frame frame, float yaw, float pitch, float[] out) {
         CameraSquares cs = frame.cameraSquares;
+        float[] viewed = VIEWED.get();
         float bx = frame.camX - cs.x;
         float by = frame.camY - cs.y;
         float bh = (frame.camZ - cs.level) * LEVEL;

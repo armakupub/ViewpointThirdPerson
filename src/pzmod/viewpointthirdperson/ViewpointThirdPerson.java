@@ -54,7 +54,7 @@ public class ViewpointThirdPerson {
     // up; it opens the player's own inventory then.
     public static boolean inventoryKey(double key) {
         IsoPlayer p = IsoPlayer.players[0];
-        return InventoryKey.ON.get() && View.enabled && p != null && !p.isDead() && !ControllerLook.usesPad(p)
+        return MouseKeyboard.INVENTORY_KEY.get() && View.enabled && p != null && !p.isDead() && !ControllerLook.usesPad(p)
                 && KeyInput.menu((int) key) == Keys.LOOT_WINDOW;
     }
 

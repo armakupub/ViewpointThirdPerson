@@ -167,7 +167,7 @@ public class ControllerLook {
     public static class Patch_lootPlayer {
         @Patch.OnExit
         public static void exit(@Patch.Return(readOnly = false) IsoPlayer ret) {
-            if (ret != null && (ControllerLook.panelHasPad || MenuCursor.holds())) ret = null;
+            if (ret != null && (ControllerLook.panelHasPad || MenuCursor.hidesLoot())) ret = null;
         }
     }
 
