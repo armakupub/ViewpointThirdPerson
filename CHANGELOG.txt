@@ -1,6 +1,13 @@
 Third Person Camera for Project Viewpoint - Changelog
 =====================================================
 
+0.3.2 - 2026-10-05
+  - Vehicles: the camera runs smoother, above all in tight turns, and the horizon holds steady. The vehicle, its trailer and the people in it now move in step with the camera, on foot your character too.
+  - Speed feel is calmer towards its top end: setting off and changing gear no longer rock the camera. The default feels as before.
+  - The camera height follows the vehicle's real roof, so it sits right over tall trucks and vans too, and no longer cuts into the ceiling or jumps while getting in or out.
+  - Controller: turning the camera with the right stick is smoother.
+  - This reaches deeper into Viewpoint than before. If a Viewpoint update breaks it, the camera works as in 0.3.1 until the next update of this mod.
+
 0.3.1 - 2026-10-04
   - Better compatibility with Viewpoint - Interface and Project Viewpoint QOL.
   - New settings under Mouse and keyboard: "Menus and windows free the cursor" and "Radial menus hide Viewpoint's loot menu".

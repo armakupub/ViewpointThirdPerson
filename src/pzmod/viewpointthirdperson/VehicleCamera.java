@@ -1,7 +1,9 @@
 package pzmod.viewpointthirdperson;
 
+import java.util.IdentityHashMap;
+import java.util.Map;
+import org.joml.Matrix3f;
 import org.joml.Vector3f;
-import viewpoint.core.Frame;
 import viewpoint.input.Look;
 import viewpoint.platform.LiveSettings;
 import zombie.scripting.objects.VehicleScript;
@@ -23,17 +25,20 @@ public class VehicleCamera {
     static final float SPEED_BACK = 0.25f;
     static final float SPEED_FOV = 10.0f;
     static final float SETTLE_TIME = 0.25f;
-    static final float LIFT = 0.9f;
+    // Above the roof, where the old eye-based pivot sat over vanilla cars, vans and step vans alike.
+    static final float ROOF_CLEAR = 0.64f;
     // A plain sedan (CarNormal): the size Distance is meant for.
     static final float REF_LENGTH = 4.74f;
-    static final float REF_HEIGHT = 1.18f;
-    static final float HEIGHT_LIFT = 0.5f;
+    static final float REF_ROOF = 1.41f;
     // A raised camera tilts down to look at the road as far ahead as it does over a sedan.
     static final float LOOK_AHEAD = 12.0f;
     static final float SIDE_SHARE = 0.5f;
     static final float OFFSET_MAX = 2.5f;
     static final float WEIGHT_TIME = 0.8f;
     static final float FEEL_DEFAULT = 0.5f;
+    // Above its default, the weight takes up a change of speed over up to this long, so the dip
+    // of a gear change while setting off evens out instead of rocking the camera.
+    static final float GATHER_TIME = 0.3f;
     static final float CLOSE_SWING = 0.5f;
 
     public static final LiveSettings.Number DISTANCE = LiveSettings.number("thirdPersonCamera.vehicleDistance", "Distance", SECTION, NEAREST, FARTHEST, 0.05f, 5.0f);
@@ -76,12 +81,24 @@ public class VehicleCamera {
     static float feltBoom;
     static float sizeBoom;
     static float sizeLift;
+    static float roofUp;
+    static final Map<VehicleScript, float[]> roofs = new IdentityHashMap<>();
+    static final Matrix3f turnShape = new Matrix3f();
     static float rear;
     static BaseVehicle last;
     static float vx, vy;
     static float fx = 1.0f, fy;
     static float nose;
+    static boolean swingOn;
+    static float swingHeading, swingDown, swingTime, swingPace;
+    static long drawnFrame = Long.MIN_VALUE;
+    static float drawnNose = Float.NaN;
+    static float swung = Float.NaN;
+    static long swungFrame;
+    // What the last frame drawn was turned on by, for being drawn late; taken back before the next.
+    static float leadYaw;
     static float offX, offY;
+    static float gatherX, gatherY;
     public static volatile float fovAdd;
 
     static volatile boolean active;
@@ -113,8 +130,7 @@ public class VehicleCamera {
         last = null;
         offX = 0.0f;
         offY = 0.0f;
-        yawSpring.speed = 0.0f;
-        pitchSpring.speed = 0.0f;
+        swingOn = false;
     }
 
     // Main thread, once a frame while seated in third person.
@@ -126,12 +142,10 @@ public class VehicleCamera {
             fx = forward.x / h;
             fy = forward.z / h;
         }
-        float lastNose = nose;
         VehicleLead.lead(vehicle, 0);
         nose = (float) Math.atan2(fy, fx) - VehicleLead.turn;
         fx = (float) Math.cos(nose);
         fy = (float) Math.sin(nose);
-        float turned = wrap(nose - lastNose);
         vehicle.getLinearVelocity(velocity);
         float dvx = velocity.x - vx;
         float dvy = velocity.z - vy;
@@ -141,11 +155,12 @@ public class VehicleCamera {
             last = vehicle;
             dvx = 0.0f;
             dvy = 0.0f;
-            turned = 0.0f;
             offX = 0.0f;
             offY = 0.0f;
             offXSpring.speed = 0.0f;
             offYSpring.speed = 0.0f;
+            gatherX = 0.0f;
+            gatherY = 0.0f;
         }
         measure(vehicle);
         float target = DISTANCE.get();
@@ -158,6 +173,7 @@ public class VehicleCamera {
 
         boolean moved = mouseMoved;
         mouseMoved = false;
+        swingOn = false;
         if (!Look.captured || !FOLLOW.get()) {
             tracking = false;
             rested = 0.0f;
@@ -167,20 +183,77 @@ public class VehicleCamera {
         tracking = true;
 
         float speed = Math.abs(vehicle.getCurrentSpeedKmHour());
-        if (speed >= MOVING_KMH && rested >= DELAY.get()) {
-            float pace = Math.min(1.0f, Math.max(0.25f, speed / FULL_KMH));
-            float time = SWING.get() / pace * ThirdPersonRig.lerp(CLOSE_SWING, 1.0f, firm);
-            // Slower driving swings more gently, but a turn is carried along by the share the
-            // swing is slower, so the view trails a turn by no more than at speed.
-            Look.yaw = wrap(Look.yaw + turned * (1.0f - pace));
-            float heading = heading(speed);
-            Look.yaw = wrap(heading + yawSpring.step(wrap(Look.yaw - heading), time, dt));
-            float down = (float) Math.toRadians(-PITCH.get()) - (float) Math.atan2(Math.max(0.0f, sizeLift), LOOK_AHEAD);
-            Look.pitch = down + pitchSpring.step(Look.pitch - down, time, dt);
-        } else {
+        swingOn = speed >= MOVING_KMH && rested >= DELAY.get();
+        if (swingOn) {
+            swingPace = Math.min(1.0f, Math.max(0.25f, speed / FULL_KMH));
+            swingTime = SWING.get() / swingPace * ThirdPersonRig.lerp(CLOSE_SWING, 1.0f, firm);
+            swingHeading = heading(speed);
+            swingDown = (float) Math.toRadians(-PITCH.get()) - (float) Math.atan2(Math.max(0.0f, sizeLift), LOOK_AHEAD);
+        }
+    }
+
+    // The render thread reads Look.yaw just before drawing a frame, while this thread is already
+    // working out the next: a swing written here would turn the view of a frame drawn with the
+    // vehicle of the one before. So each frame keeps its swing, and the render thread turns the
+    // view by it just before drawing that frame.
+    static void keepSwing(ThirdPersonRig.Snap snap, long frame, float dt) {
+        snap.swingFrame = frame;
+        snap.swingDt = dt;
+        snap.swingOn = swingOn && tracking;
+        snap.swingHeading = swingHeading;
+        snap.swingDown = swingDown;
+        snap.swingTime = swingTime;
+        snap.swingPace = swingPace;
+        snap.swingNose = nose;
+    }
+
+    // Render thread, before drawing a frame. The swing moves on by the time that frame moved the
+    // vehicle on, not by the render thread's own clock. Slower driving swings more gently, but a
+    // turn is carried along by the share the swing is slower, so the view trails a turn by no
+    // more than at speed. The main thread may be inside Look.read meanwhile: the swing is moved
+    // into what its afterRead counts from, not the mouse. The view turns on with the vehicle by
+    // ahead, how much later than usual the frame is drawn (DrawTime).
+    public static synchronized void drawSwing(ThirdPersonRig.Snap snap, float ahead) {
+        if (snap != null && snap.swingFrame == drawnFrame) return;
+        drawnFrame = snap == null ? Long.MIN_VALUE : snap.swingFrame;
+        if (leadYaw != 0.0f) {
+            Look.yaw = wrap(Look.yaw - leadYaw);
+            readYaw = wrap(readYaw - leadYaw);
+            leadYaw = 0.0f;
+        }
+        if (snap == null || !snap.on || !snap.seated || !snap.swingOn) {
+            drawnNose = Float.NaN;
+            swung = Float.NaN;
             yawSpring.speed = 0.0f;
             pitchSpring.speed = 0.0f;
+            return;
         }
+        float carried = Float.isNaN(drawnNose) ? 0.0f : wrap(snap.swingNose - drawnNose) * (1.0f - snap.swingPace);
+        drawnNose = snap.swingNose;
+        float yaw = Look.yaw;
+        float pitch = Look.pitch;
+        float to = wrap(yaw + carried);
+        to = wrap(snap.swingHeading + yawSpring.step(wrap(to - snap.swingHeading), snap.swingTime, snap.swingDt));
+        float toPitch = snap.swingDown + pitchSpring.step(pitch - snap.swingDown, snap.swingTime, snap.swingDt);
+        boolean next = snap.swingFrame == swungFrame + 1 && !Float.isNaN(swung) && snap.swingDt > 0.0f;
+        float rate = next ? wrap(to - swung) / snap.swingDt : 0.0f;
+        swung = to;
+        swungFrame = snap.swingFrame;
+        leadYaw = rate * ahead;
+        to = wrap(to + leadYaw);
+        Look.yaw = to;
+        Look.pitch = toPitch;
+        readYaw = wrap(readYaw + wrap(to - yaw));
+        readPitch += toPitch - pitch;
+    }
+
+    // A turn of the view by the render thread that the mouse smoothing is not to count.
+    static synchronized void turnView(float yaw, float pitch) {
+        float p = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, Look.pitch + pitch));
+        Look.yaw = wrap(Look.yaw + yaw);
+        readYaw = wrap(readYaw + yaw);
+        readPitch += p - Look.pitch;
+        Look.pitch = p;
     }
 
     // Where the vehicle is going, blended in from its nose as it gathers speed; never while reversing.
@@ -200,11 +273,16 @@ public class VehicleCamera {
     // the speed feel), and a spring pulls it back over the vehicle. Moved by the vehicle's speed rather than its
     // position, so it stays clear of the 100 Hz steps the physics moves the vehicle in.
     static void weight(float dvx, float dvy, float firm, float dt) {
-        float share = FEEL.get() / FEEL_DEFAULT * firm;
+        float share = feel() * firm;
         float along = (dvx * fx + dvy * fy) * share;
         float side = (dvy * fx - dvx * fy) * SIDE_SHARE * share;
-        offXSpring.speed -= along * fx - side * fy;
-        offYSpring.speed -= along * fy + side * fx;
+        gatherX += along * fx - side * fy;
+        gatherY += along * fy + side * fx;
+        float k = ThirdPersonRig.ease(dt, GATHER_TIME * clamp01((FEEL.get() - FEEL_DEFAULT) / (1.0f - FEEL_DEFAULT)));
+        offXSpring.speed -= gatherX * k;
+        offYSpring.speed -= gatherY * k;
+        gatherX -= gatherX * k;
+        gatherY -= gatherY * k;
         offX = offXSpring.step(offX, WEIGHT_TIME, dt);
         offY = offYSpring.step(offY, WEIGHT_TIME, dt);
         float len = (float) Math.sqrt(offX * offX + offY * offY);
@@ -250,25 +328,70 @@ public class VehicleCamera {
 
     static void measure(BaseVehicle vehicle) {
         float length = 0.0f;
-        float height = 0.0f;
+        float tall = REF_ROOF;
+        float top = REF_ROOF;
         VehicleScript script = vehicle.getScript();
         if (script != null) {
+            float[] roof = roof(script);
             length = script.getExtents().z;
-            height = script.getExtents().y;
+            top = roof[0];
+            tall = roof[0] - roof[1];
         }
         // What it tows raises the camera if it is taller, but does not push it back.
         BaseVehicle towed = vehicle.getVehicleTowing();
-        if (towed != null && towed.getScript() != null) height = Math.max(height, towed.getScript().getExtents().y);
+        if (towed != null && towed.getScript() != null) {
+            float[] roof = roof(towed.getScript());
+            if (roof[0] - roof[1] > tall) {
+                top += roof[0] - roof[1] - tall;
+                tall = roof[0] - roof[1];
+            }
+        }
         sizeBoom = length > 0.0f ? (length - REF_LENGTH) * 0.5f : 0.0f;
         rear = (length > 0.0f ? length : REF_LENGTH) * 0.5f;
-        sizeLift = height > 0.0f ? (height - REF_HEIGHT) * HEIGHT_LIFT : 0.0f;
+        sizeLift = tall - REF_ROOF;
+        roofUp = top;
     }
 
-    public static void pivot(Frame frame, BaseVehicle vehicle, ThirdPersonRig.Snap snap) {
+    // Roof and ground above and below the vehicle's origin, from its collision boxes and wheels;
+    // the model's mesh keeps no bounds. Scripts are scaled once loaded.
+    static float[] roof(VehicleScript script) {
+        float[] roof = roofs.get(script);
+        if (roof != null) return roof;
+        Vector3f com = script.getCenterOfMassOffset();
+        Vector3f ext = script.getExtents();
+        float top = com.y + ext.y * 0.5f;
+        for (int i = 0; i < script.getPhysicsShapeCount(); i++) {
+            VehicleScript.PhysicsShape shape = script.getPhysicsShape(i);
+            if (shape.type == 1) {
+                turnShape.rotationXYZ((float) Math.toRadians(shape.rotate.x), (float) Math.toRadians(shape.rotate.y),
+                        (float) Math.toRadians(shape.rotate.z));
+                top = Math.max(top, shape.offset.y + 0.5f * (Math.abs(turnShape.m01) * shape.extents.x
+                        + Math.abs(turnShape.m11) * shape.extents.y + Math.abs(turnShape.m21) * shape.extents.z));
+            } else if (shape.type == 2) {
+                top = Math.max(top, shape.offset.y + shape.radius);
+            }
+        }
+        float ground = com.y - ext.y * 0.5f;
+        if (script.getWheelCount() > 0) {
+            float model = script.getModel() != null ? script.getModel().getOffset().y : 0.0f;
+            ground = Float.MAX_VALUE;
+            for (int i = 0; i < script.getWheelCount(); i++) {
+                VehicleScript.Wheel wheel = script.getWheel(i);
+                ground = Math.min(ground, wheel.offset.y + model - wheel.radius);
+            }
+        }
+        roof = new float[]{top, ground};
+        roofs.put(script, roof);
+        return roof;
+    }
+
+    public static void pivot(BaseVehicle vehicle, ThirdPersonRig.Snap snap, long frame, float dt) {
         VehicleLead.lead(vehicle, 0);
         snap.x = vehicle.getX() + VehicleLead.x + offX;
         snap.y = vehicle.getY() + VehicleLead.y + offY;
-        snap.h = frame.camZ * ThirdPersonRig.LEVEL + frame.eyeY + LIFT + sizeLift;
+        snap.h = vehicle.jniTransform.origin.y + roofUp + ROOF_CLEAR;
+        snap.seated = true;
+        keepSwing(snap, frame, dt);
         snap.distance = boom();
         snap.shoulder = 0.0f;
         snap.aheadX = 0.0f;
@@ -281,7 +404,7 @@ public class VehicleCamera {
     }
 
     static void feel(BaseVehicle vehicle, float dt) {
-        float f = FEEL.get();
+        float f = feel() * FEEL_DEFAULT;
         float speed = Math.abs(vehicle.getCurrentSpeedKmHour());
         float top = vehicle.getMaxSpeed() > 0.0f ? vehicle.getMaxSpeed() : TOP_KMH;
         float pace = Math.min(1.0f, speed / (top * FULL_SHARE));
@@ -289,6 +412,15 @@ public class VehicleCamera {
         float k = ThirdPersonRig.ease(dt, SETTLE_TIME);
         feltBoom += (want - feltBoom) * k;
         fovAdd += ((float) Math.toRadians(f * SPEED_FOV * pace) - fovAdd) * k;
+    }
+
+    // Speed feel as a share of its default: linear up to the default, then flattening out at
+    // 1.5 at full rather than going on to 2.
+    static float feel() {
+        float f = FEEL.get();
+        if (f <= FEEL_DEFAULT) return f / FEEL_DEFAULT;
+        float u = f - FEEL_DEFAULT;
+        return 1.0f + 2.0f * u - 2.0f * u * u;
     }
 
     public static float boom() {

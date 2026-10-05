@@ -8,5 +8,6 @@ public class Patch_ModelSlotRenderData {
     @Patch.OnExit
     public static void exit(@Patch.This Object self) {
         VehicleLead.shift((ModelSlotRenderData) self);
+        ThirdPersonRig.shiftBody((ModelSlotRenderData) self);
     }
 }

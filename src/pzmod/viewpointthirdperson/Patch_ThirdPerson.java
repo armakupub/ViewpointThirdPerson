@@ -16,6 +16,15 @@ public class Patch_ThirdPerson {
         }
     }
 
+    // Seated, sets which level the wall grid starts at.
+    @Patch(className = "viewpoint.input.ThirdPerson", methodName = "lift")
+    public static class Patch_lift {
+        @Patch.OnExit
+        public static void exit(@Patch.Argument(0) CameraSquares cs, @Patch.Return(readOnly = false) float ret) {
+            ret = ThirdPersonRig.gridLift(cs.seated, ret);
+        }
+    }
+
     @Patch(className = "viewpoint.input.ThirdPerson", methodName = "capture")
     public static class Patch_capture {
         @Patch.OnEnter

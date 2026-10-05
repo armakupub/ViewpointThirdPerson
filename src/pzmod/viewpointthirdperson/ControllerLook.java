@@ -37,6 +37,11 @@ public class ControllerLook {
     static boolean recentre;
     public static volatile int bind = -1;
     static long last;
+    // How fast the view turns, worked out here and turned by the render thread just before it
+    // draws, on its own clock as the mouse is read: turned here, a frame drawn sooner or later than
+    // the last would show the view turned by the wrong share.
+    static volatile float yawRate, pitchRate;
+    static long drawnAt;
 
     static {
         SPEED.describe("How fast the right stick turns the view. With a controller the right stick looks round while Viewpoint is on, and a light pull on the right trigger aims, as the right mouse button does. With the Original preset, which aims on the right stick, it keeps aiming.");
@@ -67,6 +72,8 @@ public class ControllerLook {
         bind = id;
         panelHasPad = panel;
         active = on;
+        yawRate = 0.0f;
+        pitchRate = 0.0f;
         if (!on) {
             rested = 0.0f;
             yawSpring.speed = 0.0f;
@@ -97,8 +104,20 @@ public class ControllerLook {
         if (seated) VehicleCamera.mouseMoved = true;
         float speed = SPEED.get() * (p.isAiming() ? AIM_SPEED.get() : 1.0f);
         float up = INVERT_Y.get() ? y : -y;
-        Look.yaw = wrap(Look.yaw + x * YAW_RATE * speed * dt);
-        Look.pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, Look.pitch + up * PITCH_RATE * speed * dt));
+        yawRate = x * YAW_RATE * speed;
+        pitchRate = up * PITCH_RATE * speed;
+    }
+
+    // Render thread, before the frame's view is built.
+    static void draw() {
+        long now = System.nanoTime();
+        float dt = drawnAt == 0L ? 0.0f : Math.min(0.05f, (now - drawnAt) / 1.0e9f);
+        drawnAt = now;
+        float yaw = yawRate * dt;
+        float pitch = pitchRate * dt;
+        if (yaw == 0.0f && pitch == 0.0f) return;
+        VehicleCamera.turnView(yaw, pitch);
+        LookAround.turned(yaw);
     }
 
     // While a panel holds the controller's focus PZ turns the player's buttons off.
@@ -119,7 +138,7 @@ public class ControllerLook {
             return;
         }
         float time = p.isRunning() || p.isSprinting() ? FOLLOW_TIME : FOLLOW_TIME * 2.0f;
-        Look.yaw = wrap(heading + yawSpring.step(off, time, dt));
+        if (dt > 0.0f) yawRate = wrap(yawSpring.step(off, time, dt) - off) / dt;
     }
 
     // The Original preset and custom sets that aim on the right stick keep it for aiming.

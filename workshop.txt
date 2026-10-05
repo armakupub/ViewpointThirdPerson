@@ -55,6 +55,7 @@ description=[*]Safe to add or remove mid-save, the mod stores nothing in the sav
 description=[*]First person: the controller support, the loot panel buttons and the cursor key work there too. The camera features are for third person.
 description=[*]Split screen: only player one gets Viewpoint's view, player two stays isometric. This is a limit in Viewpoint.
 description=[*]Aiming from a vehicle is off while Viewpoint's view is on, for now.
+description=[*]Vehicles and your character are moved in step with the camera inside Viewpoint's drawing. A Viewpoint update can break that part. The camera then works as before until this mod catches up.
 description=[*]Project Viewpoint QOL: some features of Third Person Camera switch off to avoid conflicts. In third person the mouse wheel moves the camera instead of QOL's zoom.
 description=[*]Not meant to run together with Controller Aim for Viewpoint, which changes the controller's aiming, or Project Viewpoint Controller Support, which changes the controller's camera and aiming.
 description=[/list]
@@ -66,5 +67,5 @@ description=Please report them at [url=https://github.com/armakupub/ViewpointThi
 description=
 description=[h1]Maintenance & Source[/h1]
 description=MIT-licensed, fully open source: [url=https://github.com/armakupub/ViewpointThirdPerson]github.com/armakupub/ViewpointThirdPerson[/url].
-tags=Build 42;Interface;Vehicles;QoL
+tags=Build 42;Interface;Vehicles;QoL;WIP
 visibility=public

@@ -17,6 +17,7 @@ import java.util.stream.Stream;
 public class AdviceAccessCheck {
     static final Pattern ADVICE = Pattern.compile("@Patch\\.(?:OnEnter|OnExit)[^\\n]*\\n\\s*public static [\\w<>\\[\\]]+ \\w+\\((?:[^()]|\\([^()]*\\))*\\)\\s*\\{");
     static final Pattern REFERENCE = Pattern.compile("\\b([A-Z]\\w*)\\.([a-zA-Z_]\\w*)(\\s*\\()?");
+    static final Pattern UNQUALIFIED = Pattern.compile("(?<![\\w.])([a-zA-Z_]\\w*)(\\s*\\()?");
 
     public static void main(String[] args) throws IOException {
         Map<String, String> sources = new HashMap<>();
@@ -38,6 +39,14 @@ public class AdviceAccessCheck {
                         problems.add(file.getKey() + ": " + m.group(1) + "." + m.group(2) + " has no declaration found");
                     } else if (!modifiers.contains("public")) {
                         problems.add(file.getKey() + ": " + m.group(1) + "." + m.group(2) + " is not public");
+                    }
+                }
+                // The advice's own class, reached without a class name.
+                m = UNQUALIFIED.matcher(body);
+                while (m.find()) {
+                    String modifiers = modifiers(file.getValue(), m.group(1), m.group(2) != null);
+                    if (modifiers != null && modifiers.contains("static") && !modifiers.contains("public")) {
+                        problems.add(file.getKey() + ": " + m.group(1) + " is not public");
                     }
                 }
             }

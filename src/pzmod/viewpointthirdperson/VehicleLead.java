@@ -57,7 +57,7 @@ public class VehicleLead {
         if (LOCAL_TIME == null) return;
         float t;
         try {
-            t = Math.max(0.0f, Math.min(STEP, LOCAL_TIME.getFloat(WorldSimulation.instance)));
+            t = Math.max(0.0f, Math.min(STEP, LOCAL_TIME.getFloat(WorldSimulation.instance))) + FrameClock.ahead;
         } catch (ReflectiveOperationException | RuntimeException e) {
             return;
         }
@@ -83,6 +83,15 @@ public class VehicleLead {
     static BaseVehicle seated() {
         IsoPlayer p = IsoPlayer.players[0];
         return View.enabled && ThirdPerson.active && ThirdPersonRig.ok && p != null ? p.getVehicle() : null;
+    }
+
+    // Place in the seated vehicle's chain, -1 if not in it.
+    static int link(BaseVehicle vehicle) {
+        BaseVehicle v = seated();
+        for (int i = 0; v != null && i < CHAIN; i++, v = v.getVehicleTowing()) {
+            if (v == vehicle) return i;
+        }
+        return -1;
     }
 
     public static void shift(ModelSlotRenderData data) {

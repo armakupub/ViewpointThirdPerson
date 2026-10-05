@@ -14,6 +14,8 @@ import viewpoint.input.ThirdPerson;
 import viewpoint.platform.LiveSettings;
 import zombie.GameTime;
 import zombie.characters.IsoGameCharacter;
+import zombie.characters.IsoPlayer;
+import zombie.core.skinnedmodel.model.ModelSlotRenderData;
 import zombie.iso.IsoGridSquare;
 import zombie.inventory.types.HandWeapon;
 import zombie.vehicles.BaseVehicle;
@@ -76,6 +78,7 @@ public class ThirdPersonRig {
     public static volatile float firearmEased;
     static boolean following;
     static float pivotX, pivotY, pivotH;
+    static float drawnX, drawnY;
     static float steadyEye;
     static float steadied;
     static float lagX, lagY;
@@ -99,10 +102,15 @@ public class ThirdPersonRig {
     static float held = -1.0f;
     static float heldFull;
     static boolean seated;
+    static volatile float seatLift = Float.NaN;
     static Method setSide;
 
     public static final class Snap {
         public volatile boolean on;
+        public boolean seated;
+        public volatile boolean swingOn;
+        public volatile float swingHeading, swingDown, swingTime, swingPace, swingNose, swingDt;
+        public volatile long swingFrame;
         public float x, y, h, bodyX, bodyY, distance, shoulder, held;
         public float aheadX, aheadY, clearX, clearY, clearH;
     }
@@ -204,16 +212,29 @@ public class ThirdPersonRig {
         if (ThirdPerson.active && ViewpointThirdPerson.shoulderPressed()) swapSide();
 
         Snap snap = snaps.computeIfAbsent(frame.cameraSquares, k -> new Snap());
+        snap.swingOn = false;
+        snap.swingFrame = frame.number;
         BaseVehicle vehicle = chr == null ? null : chr.getVehicle();
         boolean on = ok && ThirdPerson.active && !frame.onCamera && chr != null;
+        if (on) FrameClock.tick(frame.number, dt);
+        else FrameClock.stop();
+        DrawTime.begin(frame, now, on);
+        drawnX = 0.0f;
+        drawnY = 0.0f;
         if (!on || vehicle != null) {
             if (on) {
                 if (!seated) held = -1.0f;
                 seated = true;
                 VehicleCamera.update(vehicle, dt);
-                VehicleCamera.pivot(frame, vehicle, snap);
+                VehicleCamera.pivot(vehicle, snap, frame.number, dt);
+                DrawTime.camera(frame, VehicleCamera.vx, VehicleCamera.vy);
+                // Viewpoint puts the wall grid's two levels where the eye is, which climbs a level
+                // getting in and out of a tall vehicle; ours start at the vehicle's floor.
+                int level = (int) Math.floor(vehicle.jniTransform.origin.y / LEVEL + 0.05f);
+                seatLift = (level + 0.5f - frame.camZ) * LEVEL - frame.eyeY;
             } else {
                 VehicleCamera.reset();
+                seatLift = Float.NaN;
                 snap.on = false;
                 held = -1.0f;
             }
@@ -227,6 +248,7 @@ public class ThirdPersonRig {
         }
         if (seated) held = -1.0f;
         seated = false;
+        seatLift = Float.NaN;
         VehicleCamera.reset();
         LookAround.update(chr, dt);
 
@@ -286,6 +308,12 @@ public class ThirdPersonRig {
                 lerp(roomy * lerp(1.0f, meleeShare, m), gunDistance, a)));
         float near = held >= 0.0f ? Math.min(distance, held) : distance;
         follow(tx, ty, step, FOLLOW.get() * (1.0f - 0.7f * a) * firm(near));
+        // The body is drawn, and the camera follows it, on the frames' clock.
+        drawnX = velX * FrameClock.ahead;
+        drawnY = velY * FrameClock.ahead;
+        tx += drawnX;
+        ty += drawnY;
+        DrawTime.camera(frame, velX, velY);
         pivotX = tx - lagX;
         pivotY = ty - lagY;
         snap.x = pivotX;
@@ -297,7 +325,36 @@ public class ThirdPersonRig {
         snap.aheadY = velY * AHEAD;
         snap.distance = distance;
         snap.shoulder = lerp(lerp(SHOULDER.get(), MELEE_SHOULDER.get(), m), FIREARM_SHOULDER.get(), a) * side;
+        snap.seated = false;
+        snap.swingOn = false;
         snap.on = true;
+    }
+
+    static Field drawnFrame;
+    static boolean drawBroken;
+
+    // Render thread, with Viewpoint's SceneDrawer about to draw its frame.
+    public static void beforeDraw(Object drawer) {
+        ControllerLook.draw();
+        if (drawBroken) return;
+        try {
+            if (drawnFrame == null) {
+                drawnFrame = drawer.getClass().getDeclaredField("frame");
+                drawnFrame.setAccessible(true);
+            }
+            Frame frame = (Frame) drawnFrame.get(drawer);
+            float ahead = DrawTime.draw(frame);
+            VehicleCamera.drawSwing(ok ? snaps.get(frame.cameraSquares) : null, ahead);
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            drawBroken = true;
+            System.out.println("[ViewpointThirdPerson] vehicle camera does not swing in, nothing drawn at draw time, Viewpoint changed: " + e);
+        }
+    }
+
+    public static void shiftBody(ModelSlotRenderData data) {
+        if (data.inVehicle || data.object != IsoPlayer.players[0] || (drawnX == 0.0f && drawnY == 0.0f)) return;
+        data.x += drawnX;
+        data.y += drawnY;
     }
 
     static float firm(float near) {
@@ -335,6 +392,11 @@ public class ThirdPersonRig {
                 * Math.max(1.0f, Math.max(MELEE_DISTANCE.get(), MELEE_INDOORS.get()));
         return Math.min(MAX_DISTANCE, distance)
                 + Math.max(SHOULDER.get(), Math.max(MELEE_SHOULDER.get(), FIREARM_SHOULDER.get())) + 1.0f;
+    }
+
+    public static float gridLift(boolean seated, float lift) {
+        float l = seatLift;
+        return ok && seated && !Float.isNaN(l) ? l : lift;
     }
 
     public static float fov(float fov) {
@@ -382,6 +444,11 @@ public class ThirdPersonRig {
         float by = frame.camY - cs.y;
         float bh = (frame.camZ - cs.level) * LEVEL;
         if (!place(cs, bx - frame.eyeX, by - frame.eyeZ, bh + frame.eyeY, yaw, pitch, viewed, false)) return;
+        // Moved on with what it hangs from, by how late the frame is drawn.
+        if (DrawTime.drawing(frame)) {
+            viewed[0] += DrawTime.camDX;
+            viewed[1] += DrawTime.camDY;
+        }
         out[0] = bx - viewed[0];
         out[1] = viewed[2] - bh;
         out[2] = by - viewed[1];
@@ -400,7 +467,7 @@ public class ThirdPersonRig {
             float py = s.y - cs.y;
             float ph = s.h - cs.level * LEVEL;
             // The lagging pivot must not trail through a wall the body just passed.
-            float r = reach(cs, headX, headY, headH, px, py, ph);
+            float r = reach(cs, s, headX, headY, headH, px, py, ph);
             px = headX + (px - headX) * r;
             py = headY + (py - headY) * r;
             ph = headH + (ph - headH) * r;
@@ -412,7 +479,7 @@ public class ThirdPersonRig {
 
             float sx = px - sy * s.shoulder;
             float sY = py + cy * s.shoulder;
-            r = reach(cs, px, py, ph, sx, sY, ph);
+            r = reach(cs, s, px, py, ph, sx, sY, ph);
             sx = px + (sx - px) * r;
             sY = py + (sY - py) * r;
 
@@ -430,7 +497,7 @@ public class ThirdPersonRig {
             float bx = sx - cy * cp * d;
             float by = sY - sy * cp * d;
             float bh = ph - sp * d;
-            r = reach(cs, sx, sY, ph, bx, by, bh);
+            r = reach(cs, s, sx, sY, ph, bx, by, bh);
             float len = d * r;
             if (capture) {
                 float ahead = ahead(cs, s, sx, sY, ph, yaw, cp, sp, d);
@@ -456,7 +523,8 @@ public class ThirdPersonRig {
             out[2] = ph - sp * len;
             if (capture) {
                 float x = out[0], y = out[1], h = out[2];
-                KEEP_CLEAR.invokeExact(cs, out);
+                // keepClear would hold a seated camera under the sky as under a ceiling.
+                if (!(s.seated && h > CameraSquares.LEVELS * LEVEL - CLEAR)) KEEP_CLEAR.invokeExact(cs, out);
                 float k = ease(lastDt, CLEAR_TIME);
                 s.clearX += (out[0] - x - s.clearX) * k;
                 s.clearY += (out[1] - y - s.clearY) * k;
@@ -484,17 +552,23 @@ public class ThirdPersonRig {
         lastYaw = yaw;
         float turnAhead = Math.max(-MAX_TURN_AHEAD, Math.min(MAX_TURN_AHEAD, yawRate * AHEAD));
         if (Math.abs(turnAhead) < 1.0e-3f && s.aheadX * s.aheadX + s.aheadY * s.aheadY < 1.0e-6f) return d;
-        float r = reach(cs, sx, sY, ph, sx + s.aheadX, sY + s.aheadY, ph);
+        float r = reach(cs, s, sx, sY, ph, sx + s.aheadX, sY + s.aheadY, ph);
         float qx = sx + s.aheadX * r;
         float qy = sY + s.aheadY * r;
         float y = yaw + turnAhead;
         float cy = (float) Math.cos(y);
         float sy = (float) Math.sin(y);
-        return d * reach(cs, qx, qy, ph, qx - cy * cp * d, qy - sy * cp * d, ph - sp * d);
+        return d * reach(cs, s, qx, qy, ph, qx - cy * cp * d, qy - sy * cp * d, ph - sp * d);
     }
 
-    static float reach(CameraSquares cs, float x0, float y0, float h0, float x1, float y1, float h1) throws Throwable {
-        return (float) REACH.invokeExact(cs, x0, y0, h0, x1, y1, h1);
+    // Above the grid's two levels Viewpoint sees a wall. Seated, what lies above them is open
+    // sky, so a ray that leaves through the top before meeting a wall runs its full length.
+    static float reach(CameraSquares cs, Snap s, float x0, float y0, float h0, float x1, float y1, float h1) throws Throwable {
+        float top = CameraSquares.LEVELS * LEVEL;
+        if (s.seated && h0 >= top) return 1.0f;
+        float r = (float) REACH.invokeExact(cs, x0, y0, h0, x1, y1, h1);
+        if (s.seated && h1 > top && r >= (top - h0) / (h1 - h0) - 1.0e-3f) return 1.0f;
+        return r;
     }
 
     // Outdoors the wheel moves Distance itself, so the window shows and keeps where it stands;

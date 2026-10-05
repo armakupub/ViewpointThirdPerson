@@ -83,6 +83,11 @@ public class LookAround {
         readYaw = VehicleCamera.wrap(readYaw + delta);
     }
 
+    // A turn by another thread between beforeRead and afterRead that is not the mouse's.
+    static synchronized void turned(float delta) {
+        readYaw = VehicleCamera.wrap(readYaw + delta);
+    }
+
     public static synchronized void beforeRead() {
         readYaw = Look.yaw;
     }
