@@ -44,25 +44,25 @@ public class ThirdPersonRig {
     static final float FIRM_FAR = 2.0f;
 
     public static final LiveSettings.Number DISTANCE = LiveSettings.number("thirdPersonCamera.distance", "Distance", SECTION, 0.3f, 8.0f, 0.05f, 2.0f);
-    public static final LiveSettings.Number ZOOM_NEAR = LiveSettings.number("thirdPersonCamera.zoomNearest", "Mouse wheel: nearest", SECTION, 0.3f, 8.0f, 0.05f, 1.5f);
-    public static final LiveSettings.Number ZOOM_FAR = LiveSettings.number("thirdPersonCamera.zoomFarthest", "Mouse wheel: farthest", SECTION, 0.3f, 8.0f, 0.05f, 4.0f);
-    public static final LiveSettings.Number ZOOM_STEPS = LiveSettings.number("thirdPersonCamera.zoomSteps", "Mouse wheel: steps", SECTION, 1.0f, 20.0f, 1.0f, 6.0f);
-    public static final LiveSettings.Number INDOOR_DISTANCE = LiveSettings.number("thirdPersonCamera.indoorDistance", "Indoors: zoom in to", SECTION, 0.3f, 8.0f, 0.05f, 0.5f);
-    public static final LiveSettings.Number RECOVER = LiveSettings.number("thirdPersonCamera.collisionRecover", "Collision: backing out (s)", SECTION, 0.0f, 1.0f, 0.01f, 0.35f);
-    public static final LiveSettings.Number HEIGHT = LiveSettings.number("thirdPersonCamera.height", "Height above the eyes", SECTION, -0.8f, 1.5f, 0.01f, 0.15f);
+    public static final LiveSettings.Number ZOOM_NEAR = LiveSettings.number("thirdPersonCamera.zoomNearest", "Zoom: nearest", SECTION, 0.3f, 8.0f, 0.05f, 1.5f);
+    public static final LiveSettings.Number ZOOM_FAR = LiveSettings.number("thirdPersonCamera.zoomFarthest", "Zoom: farthest", SECTION, 0.3f, 8.0f, 0.05f, 4.0f);
+    public static final LiveSettings.Number ZOOM_STEPS = LiveSettings.number("thirdPersonCamera.zoomSteps", "Zoom: steps", SECTION, 1.0f, 20.0f, 1.0f, 6.0f);
+    public static final LiveSettings.Number INDOOR_DISTANCE = LiveSettings.number("thirdPersonCamera.indoorDistance", "Distance indoors", SECTION, 0.3f, 8.0f, 0.05f, 0.5f);
+    public static final LiveSettings.Number RECOVER = LiveSettings.number("thirdPersonCamera.collisionRecover", "Back out from walls (s)", SECTION, 0.0f, 1.0f, 0.01f, 0.35f);
+    public static final LiveSettings.Number HEIGHT = LiveSettings.number("thirdPersonCamera.height", "Height", SECTION, -0.8f, 1.5f, 0.01f, 0.15f);
     public static final LiveSettings.Choice SIDE = LiveSettings.choice("thirdPersonCamera.side", "Shoulder", SECTION, new String[]{"Right", "Left"}, 0);
     public static final LiveSettings.Number SHOULDER = LiveSettings.number("thirdPersonCamera.shoulder", "Shoulder offset", SECTION, 0.0f, 1.5f, 0.01f, 0.3f);
     public static final LiveSettings.Number LOOK_UP = LiveSettings.number("thirdPersonCamera.lookUpCloser", "Closer when looking up", SECTION, 0.0f, 0.9f, 0.05f, 0.5f);
     public static final LiveSettings.Number FOLLOW = LiveSettings.number("thirdPersonCamera.follow", "Follow smoothing (s)", SECTION, 0.0f, 0.5f, 0.01f, 0.06f);
     public static final LiveSettings.Number FOLLOW_HEIGHT = LiveSettings.number("thirdPersonCamera.followHeight", "Height smoothing (s)", SECTION, 0.0f, 0.8f, 0.01f, 0.2f);
-    public static final LiveSettings.Number MELEE_DISTANCE = LiveSettings.number("thirdPersonCamera.meleeDistance", "Combat stance outdoors: distance (share)", COMBAT, 0.5f, 2.0f, 0.05f, 1.1f);
-    public static final LiveSettings.Number MELEE_INDOORS = LiveSettings.number("thirdPersonCamera.meleeDistanceIndoors", "Combat stance indoors: distance (share)", COMBAT, 0.5f, 2.0f, 0.05f, 0.8f);
+    public static final LiveSettings.Number MELEE_DISTANCE = LiveSettings.number("thirdPersonCamera.meleeDistance", "Combat stance: distance outdoors (×)", COMBAT, 0.5f, 2.0f, 0.05f, 1.1f);
+    public static final LiveSettings.Number MELEE_INDOORS = LiveSettings.number("thirdPersonCamera.meleeDistanceIndoors", "Combat stance: distance indoors (×)", COMBAT, 0.5f, 2.0f, 0.05f, 0.8f);
     public static final LiveSettings.Number MELEE_SHOULDER = LiveSettings.number("thirdPersonCamera.meleeShoulder", "Combat stance: shoulder offset", COMBAT, 0.0f, 1.5f, 0.01f, 0.2f);
-    public static final LiveSettings.Number FIREARM_DISTANCE = LiveSettings.number("thirdPersonCamera.firearmDistance", "Firearm aiming outdoors: distance", COMBAT, 0.3f, 5.0f, 0.05f, 1.6f);
-    public static final LiveSettings.Number FIREARM_INDOORS = LiveSettings.number("thirdPersonCamera.firearmDistanceIndoors", "Firearm aiming indoors: distance", COMBAT, 0.3f, 5.0f, 0.05f, 0.6f);
+    public static final LiveSettings.Number FIREARM_DISTANCE = LiveSettings.number("thirdPersonCamera.firearmDistance", "Firearm aiming: distance outdoors", COMBAT, 0.3f, 5.0f, 0.05f, 1.6f);
+    public static final LiveSettings.Number FIREARM_INDOORS = LiveSettings.number("thirdPersonCamera.firearmDistanceIndoors", "Firearm aiming: distance indoors", COMBAT, 0.3f, 5.0f, 0.05f, 0.6f);
     public static final LiveSettings.Number FIREARM_SHOULDER = LiveSettings.number("thirdPersonCamera.firearmShoulder", "Firearm aiming: shoulder offset", COMBAT, 0.0f, 1.5f, 0.01f, 0.5f);
     public static final LiveSettings.Number FIREARM_FOV = LiveSettings.number("thirdPersonCamera.firearmFovChange", "Firearm aiming: field of view change", COMBAT, -40.0f, 10.0f, 1.0f, -5.0f);
-    public static final LiveSettings.Number STANCE_TIME = LiveSettings.number("thirdPersonCamera.stanceTime", "Stance blend (s)", COMBAT, 0.0f, 1.0f, 0.01f, 0.12f);
+    public static final LiveSettings.Number STANCE_TIME = LiveSettings.number("thirdPersonCamera.stanceTime", "Stance transition (s)", COMBAT, 0.0f, 1.0f, 0.01f, 0.12f);
 
     static final Set<String> STEADY;
     static final LiveSettings.Number HEAD_MOVEMENT;
@@ -118,26 +118,16 @@ public class ThirdPersonRig {
     static final Map<CameraSquares, Snap> snaps = new ConcurrentHashMap<>();
 
     static {
-        DISTANCE.describe("How far behind the shoulder the camera hangs outdoors. The mouse wheel changes it, between the two limits below.");
-        ZOOM_NEAR.describe("The nearest the mouse wheel brings the camera to the shoulder.");
-        INDOOR_DISTANCE.describe("Going under a roof or into a room brings the camera in to this distance, if it was further out; the wheel then zooms freely. Back outside, it returns to Distance.");
-        RECOVER.describe("After a wall pushed the camera in, how long it takes to back out again. It always moves in at once. On foot and in vehicles.");
-        ZOOM_FAR.describe("The farthest the mouse wheel takes the camera from the shoulder.");
-        ZOOM_STEPS.describe("How many turns of the mouse wheel take the camera from nearest to farthest, on foot and in vehicles. Each step feels the same size, near or far.");
-        HEIGHT.describe("Where the camera pivots, above (or below) the eyes. Follows a crouch; the head's motion only as far as Viewpoint's Head movement (Controls, Camera) asks.");
-        SIDE.describe("Which shoulder the camera looks over. The swap shoulder key (Third person, Keys) flips it.");
-        SHOULDER.describe("How far beside the body the camera sits while walking about.");
-        LOOK_UP.describe("Looking up pulls the camera in by this share of its distance, so it stays off the ground.");
-        FOLLOW.describe("How long the camera takes to catch up with the body: 0 is fixed to it.");
-        FOLLOW_HEIGHT.describe("How long the camera takes to follow the body up and down: crouching, stairs.");
-        MELEE_DISTANCE.describe("Distance in the combat stance without a firearm outdoors, as a share of the distance before it: above 1 backs off to see more round the body.");
-        MELEE_INDOORS.describe("The same under a roof or in a room: below 1 moves in, so the swing crosses the screen.");
-        MELEE_SHOULDER.describe("Shoulder offset in the combat stance without a firearm: low keeps both flanks in view.");
-        FIREARM_DISTANCE.describe("Distance while aiming a firearm outdoors. Aiming never takes the camera further out than it already is.");
-        FIREARM_INDOORS.describe("The same under a roof or in a room.");
-        FIREARM_SHOULDER.describe("Shoulder offset while aiming a firearm.");
-        FIREARM_FOV.describe("Degrees the third-person field of view narrows (below 0) or widens while aiming a firearm. A small change keeps your surroundings in view.");
-        STANCE_TIME.describe("How long the camera takes to move into and out of the combat stance or firearm aiming.");
+        DISTANCE.describe("Outdoors. The mouse wheel zooms.");
+        INDOOR_DISTANCE.describe("Entering a building zooms in to this.");
+        ZOOM_STEPS.describe("Wheel turns from nearest to farthest.");
+        SIDE.describe("The Swap shoulder key switches it.");
+        LOOK_UP.describe("Keeps the camera off the ground.");
+        FOLLOW.describe("0 = rigid.");
+        FOLLOW_HEIGHT.describe("Crouching, stairs.");
+        MELEE_DISTANCE.describe("1 = unchanged.");
+        MELEE_INDOORS.describe("1 = unchanged.");
+        FIREARM_FOV.describe("Below 0 zooms in.");
         Set<String> steady = null;
         try {
             Field f = Class.forName("viewpoint.input.Controls").getDeclaredField("STEADY_STATES");
@@ -400,6 +390,7 @@ public class ThirdPersonRig {
     }
 
     public static float fov(float fov) {
+        VehicleCamera.baseFov = fov;
         fov += VehicleCamera.fovAdd;
         float a = firearmEased;
         if (a <= 0.0f || !ThirdPerson.active) return fov;
@@ -574,15 +565,35 @@ public class ThirdPersonRig {
     // Outdoors the wheel moves Distance itself, so the window shows and keeps where it stands;
     // indoors it moves a distance of its own, set afresh on entering.
     public static void wheel(int wheel) {
-        float near = Math.min(ZOOM_NEAR.get(), ZOOM_FAR.get());
+        float near = wheelNear();
         float far = Math.max(ZOOM_NEAR.get(), ZOOM_FAR.get());
-        boolean in = inside && indoorZoom >= 0.0f;
-        // Indoors the wheel must reach back in to where entering put the camera.
-        if (in) near = Math.min(near, INDOOR_DISTANCE.get());
         if (far - near < 1.0e-3f) return;
-        float d = wheelStep(in ? indoorZoom : DISTANCE.get(), near, far, wheel);
-        if (in) indoorZoom = d;
+        float d = wheelStep(zoomed(), near, far, wheel);
+        if (zoomedIndoors()) indoorZoom = d;
         else DISTANCE.set(d);
+    }
+
+    static boolean zoomedAllIn() {
+        return zoomed() <= wheelNear() + 0.05f;
+    }
+
+    static void zoomAllIn() {
+        if (zoomedIndoors()) indoorZoom = wheelNear();
+        else DISTANCE.set(wheelNear());
+    }
+
+    // Indoors the wheel must reach back in to where entering put the camera.
+    private static float wheelNear() {
+        float near = Math.min(ZOOM_NEAR.get(), ZOOM_FAR.get());
+        return zoomedIndoors() ? Math.min(near, INDOOR_DISTANCE.get()) : near;
+    }
+
+    private static boolean zoomedIndoors() {
+        return inside && indoorZoom >= 0.0f;
+    }
+
+    private static float zoomed() {
+        return zoomedIndoors() ? indoorZoom : DISTANCE.get();
     }
 
     // Steps evenly spaced on a log scale, so they feel alike; a distance between two steps

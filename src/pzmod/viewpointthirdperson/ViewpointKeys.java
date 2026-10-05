@@ -23,12 +23,10 @@ public class ViewpointKeys {
         if (declared) return;
         declared = true;
         try {
-            KeyBind cursor = declare("thirdPersonCamera.keys.cursor", "Cursor on or off", KeyBind.Kind.PRESS, "",
-                    "Frees the cursor, or looks around again. Viewpoint does this on the middle mouse button; a key set here takes its place, and Default or Clear give it back.");
-            KeyBind shoulder = declare("thirdPersonCamera.keys.swapShoulder", "Swap shoulder", KeyBind.Kind.PRESS, "",
-                    "Moves the third-person camera to the other shoulder.");
+            KeyBind cursor = declare("thirdPersonCamera.keys.cursor", "Toggle cursor", KeyBind.Kind.PRESS, "", null);
+            KeyBind shoulder = declare("thirdPersonCamera.keys.swapShoulder", "Swap shoulder", KeyBind.Kind.PRESS, "", null);
             KeyBind lookAround = declare("thirdPersonCamera.keys.lookAround", "Look around", KeyBind.Kind.HOLD, "",
-                    "While held on foot, the mouse turns the camera round the character, who keeps facing and walking the same way. Letting go or aiming brings it back behind.");
+                    "Hold to look around while you keep walking. In a vehicle, holds the view.");
             Patch_KeyBind.cursor = cursor;
             CURSOR = cursor;
             SHOULDER = shoulder;
@@ -47,7 +45,7 @@ public class ViewpointKeys {
         Method add = LiveSettings.class.getDeclaredMethod("add", LiveSettings.Setting.class);
         add.setAccessible(true);
         add.invoke(null, bind);
-        bind.describe(tooltip);
+        if (tooltip != null) bind.describe(tooltip);
         Field all = Keys.class.getDeclaredField("ALL");
         all.setAccessible(true);
         ((List<KeyBind>) all.get(null)).add(bind);

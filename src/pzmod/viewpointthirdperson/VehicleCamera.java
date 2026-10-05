@@ -6,6 +6,11 @@ import org.joml.Matrix3f;
 import org.joml.Vector3f;
 import viewpoint.input.Look;
 import viewpoint.platform.LiveSettings;
+import zombie.characters.IsoPlayer;
+import zombie.core.Core;
+import zombie.core.textures.Texture;
+import zombie.input.GameKeyboard;
+import zombie.scripting.objects.ModelAttachment;
 import zombie.scripting.objects.VehicleScript;
 import zombie.vehicles.BaseVehicle;
 
@@ -22,13 +27,18 @@ public class VehicleCamera {
     static final float MAX_PITCH = (float) Math.toRadians(85.0);
     static final float TOP_KMH = 100.0f;
     static final float FULL_SHARE = 0.8f;
-    static final float SPEED_BACK = 0.25f;
     static final float SPEED_FOV = 10.0f;
+    // Screen share kept clear above the dashboard.
+    static final float REAR_PAD = 0.03f;
+    static final String DASHBOARD = "media/ui/vehicles/dashboard.png";
     static final float SETTLE_TIME = 0.25f;
     // Above the roof, where the old eye-based pivot sat over vanilla cars, vans and step vans alike.
     static final float ROOF_CLEAR = 0.64f;
-    // A plain sedan (CarNormal): the size Distance is meant for.
-    static final float REF_LENGTH = 4.74f;
+    // Shapes this close to the rearmost one count for the rear's lowest edge.
+    static final float REAR_BAND = 0.3f;
+    static final float EXTRA_MIN = -4.0f;
+    static final float EXTRA_MAX = 6.0f;
+    static final float WHEEL_STEP = 0.5f;
     static final float REF_ROOF = 1.41f;
     // A raised camera tilts down to look at the road as far ahead as it does over a sedan.
     static final float LOOK_AHEAD = 12.0f;
@@ -41,10 +51,10 @@ public class VehicleCamera {
     static final float GATHER_TIME = 0.3f;
     static final float CLOSE_SWING = 0.5f;
 
-    public static final LiveSettings.Number DISTANCE = LiveSettings.number("thirdPersonCamera.vehicleDistance", "Distance", SECTION, NEAREST, FARTHEST, 0.05f, 5.0f);
+    public static final LiveSettings.Number DISTANCE = LiveSettings.number("thirdPersonCamera.vehicleDistanceExtra", "Distance", SECTION, EXTRA_MIN, EXTRA_MAX, 0.05f, 0.0f);
     public static final LiveSettings.Number MOUSE = LiveSettings.number("thirdPersonCamera.vehicleMouse", "Mouse smoothing (s)", SECTION, 0.0f, 0.5f, 0.01f, 0.12f);
     public static final LiveSettings.Toggle FOLLOW = LiveSettings.toggle("thirdPersonCamera.vehicleFollow", "Swing in behind", SECTION, true);
-    public static final LiveSettings.Number DELAY = LiveSettings.number("thirdPersonCamera.vehicleDelay", "Swing after the mouse rests (s)", SECTION, 0.0f, 5.0f, 0.1f, 1.0f);
+    public static final LiveSettings.Number DELAY = LiveSettings.number("thirdPersonCamera.vehicleDelay", "Swing delay (s)", SECTION, 0.0f, 5.0f, 0.1f, 2.0f);
     public static final LiveSettings.Number SWING = LiveSettings.number("thirdPersonCamera.vehicleSwing", "Swing time (s)", SECTION, 0.1f, 3.0f, 0.05f, 0.5f);
     public static final LiveSettings.Number SLIDE = LiveSettings.number("thirdPersonCamera.vehicleSlide", "Follow the slide", SECTION, 0.0f, 1.0f, 0.05f, 1.0f);
     public static final LiveSettings.Number FEEL = LiveSettings.number("thirdPersonCamera.vehicleFeel", "Speed feel", SECTION, 0.0f, 1.0f, 0.05f, 0.5f);
@@ -78,13 +88,16 @@ public class VehicleCamera {
     static float shown = -1.0f;
     static float rested;
     static boolean tracking;
+    static boolean lookHeld;
     static float feltBoom;
-    static float sizeBoom;
+    static volatile float frameBoom = 6.0f;
     static float sizeLift;
     static float roofUp;
     static final Map<VehicleScript, float[]> roofs = new IdentityHashMap<>();
     static final Matrix3f turnShape = new Matrix3f();
     static float rear;
+    static float rearBottom;
+    static Texture dashboardTexture;
     static BaseVehicle last;
     static float vx, vy;
     static float fx = 1.0f, fy;
@@ -100,6 +113,7 @@ public class VehicleCamera {
     static float offX, offY;
     static float gatherX, gatherY;
     public static volatile float fovAdd;
+    static volatile float baseFov = (float) Math.toRadians(60.0);
 
     static volatile boolean active;
     static volatile boolean mouseMoved;
@@ -108,14 +122,12 @@ public class VehicleCamera {
     static long readAt;
 
     static {
-        DISTANCE.describe("How far the camera sits behind a car of ordinary size. Longer vehicles move it back and taller ones raise it; a trailer does not push it back. The mouse wheel changes it while seated.");
-        MOUSE.describe("While seated the view follows the mouse a moment later, so it cannot be yanked about. 0 turns at once.");
-        FOLLOW.describe("While driving, the camera swings round behind the vehicle once the mouse rests and the vehicle is moving. Reversing keeps it looking ahead.");
-        DELAY.describe("How long the mouse must rest before the camera swings in behind.");
-        SWING.describe("How long the swing takes at speed; slower driving swings more gently.");
-        SLIDE.describe("At speed the camera swings in behind where the vehicle is going rather than where its nose points, so a slide shows. 0 follows the nose only.");
-        FEEL.describe("How strongly speed shows. The faster you go, the further the camera drops back and the wider the view, fully at 80% of top speed. The camera also has weight: it lags when you speed up, closes in when you brake and drifts wide in turns. 0 fixes it to the vehicle.");
-        PITCH.describe("How far the camera looks down at the road once it has swung in behind.");
+        DISTANCE.describe("The mouse wheel zooms. 0 = default.");
+        MOUSE.describe("0 = instant.");
+        FOLLOW.describe("The camera returns behind the vehicle while driving.");
+        DELAY.describe("After the mouse rests.");
+        SLIDE.describe("0 = follows the nose.");
+        FEEL.describe("Wider view at speed. 0 = off.");
     }
 
     public static void init() {
@@ -124,6 +136,7 @@ public class VehicleCamera {
     public static void reset() {
         active = false;
         tracking = false;
+        lookHeld = false;
         rested = 0.0f;
         feltBoom = 0.0f;
         fovAdd = 0.0f;
@@ -163,7 +176,7 @@ public class VehicleCamera {
             gatherY = 0.0f;
         }
         measure(vehicle);
-        float target = DISTANCE.get();
+        float target = Math.max(NEAREST, frameBoom + DISTANCE.get());
         shown = shown < 0.0f ? target : shown + (target - shown) * ThirdPersonRig.ease(dt, ThirdPersonRig.ZOOM_TIME);
         feel(vehicle, dt);
         // Close behind the vehicle the same sway is a wide swing of the view.
@@ -176,10 +189,14 @@ public class VehicleCamera {
         swingOn = false;
         if (!Look.captured || !FOLLOW.get()) {
             tracking = false;
+            lookHeld = false;
             rested = 0.0f;
             return;
         }
-        rested = moved || !tracking ? 0.0f : rested + dt;
+        boolean looking = ViewpointKeys.LOOK_AROUND != null && ViewpointKeys.LOOK_AROUND.down(GameKeyboard::isKeyDown);
+        if (lookHeld && !looking) rested = DELAY.get();
+        else rested = moved || looking || !tracking ? 0.0f : rested + dt;
+        lookHeld = looking;
         tracking = true;
 
         float speed = Math.abs(vehicle.getCurrentSpeedKmHour());
@@ -327,15 +344,17 @@ public class VehicleCamera {
     }
 
     static void measure(BaseVehicle vehicle) {
-        float length = 0.0f;
+        float back = 2.4f;
+        float bottom = -0.05f;
         float tall = REF_ROOF;
         float top = REF_ROOF;
         VehicleScript script = vehicle.getScript();
         if (script != null) {
             float[] roof = roof(script);
-            length = script.getExtents().z;
             top = roof[0];
             tall = roof[0] - roof[1];
+            back = roof[2];
+            bottom = roof[3];
         }
         // What it tows raises the camera if it is taller, but does not push it back.
         BaseVehicle towed = vehicle.getVehicleTowing();
@@ -346,41 +365,69 @@ public class VehicleCamera {
                 tall = roof[0] - roof[1];
             }
         }
-        sizeBoom = length > 0.0f ? (length - REF_LENGTH) * 0.5f : 0.0f;
-        rear = (length > 0.0f ? length : REF_LENGTH) * 0.5f;
+        rear = back;
+        rearBottom = bottom;
         sizeLift = tall - REF_ROOF;
         roofUp = top;
+        frameBoom = rearInView(baseFov, dashboard(vehicle), top, bottom, back, sizeLift);
     }
 
-    // Roof and ground above and below the vehicle's origin, from its collision boxes and wheels;
-    // the model's mesh keeps no bounds. Scripts are scaled once loaded.
+    // Roof, ground, rear and the rear's lowest edge, from collision shapes, shadow, tow hitch and
+    // wheels; the mesh keeps no bounds. Scripts are scaled once loaded.
     static float[] roof(VehicleScript script) {
         float[] roof = roofs.get(script);
         if (roof != null) return roof;
         Vector3f com = script.getCenterOfMassOffset();
         Vector3f ext = script.getExtents();
         float top = com.y + ext.y * 0.5f;
-        for (int i = 0; i < script.getPhysicsShapeCount(); i++) {
+        int shapes = script.getPhysicsShapeCount();
+        // The chassis box last.
+        float[] shapeRear = new float[shapes + 1];
+        float[] shapeBottom = new float[shapes + 1];
+        shapeRear[shapes] = ext.z * 0.5f - com.z;
+        shapeBottom[shapes] = com.y - ext.y * 0.5f;
+        for (int i = 0; i < shapes; i++) {
             VehicleScript.PhysicsShape shape = script.getPhysicsShape(i);
             if (shape.type == 1) {
                 turnShape.rotationXYZ((float) Math.toRadians(shape.rotate.x), (float) Math.toRadians(shape.rotate.y),
                         (float) Math.toRadians(shape.rotate.z));
-                top = Math.max(top, shape.offset.y + 0.5f * (Math.abs(turnShape.m01) * shape.extents.x
-                        + Math.abs(turnShape.m11) * shape.extents.y + Math.abs(turnShape.m21) * shape.extents.z));
+                float halfY = 0.5f * (Math.abs(turnShape.m01) * shape.extents.x + Math.abs(turnShape.m11) * shape.extents.y
+                        + Math.abs(turnShape.m21) * shape.extents.z);
+                top = Math.max(top, shape.offset.y + halfY);
+                shapeBottom[i] = shape.offset.y - halfY;
+                shapeRear[i] = -shape.offset.z + 0.5f * (Math.abs(turnShape.m02) * shape.extents.x
+                        + Math.abs(turnShape.m12) * shape.extents.y + Math.abs(turnShape.m22) * shape.extents.z);
             } else if (shape.type == 2) {
                 top = Math.max(top, shape.offset.y + shape.radius);
+                shapeBottom[i] = shape.offset.y - shape.radius;
+                shapeRear[i] = -shape.offset.z + shape.radius;
+            } else {
+                shapeRear[i] = Float.NEGATIVE_INFINITY;
             }
         }
+        float bodyRear = Float.NEGATIVE_INFINITY;
+        for (float r : shapeRear) bodyRear = Math.max(bodyRear, r);
+        float bottom = Float.MAX_VALUE;
+        for (int i = 0; i <= shapes; i++) {
+            if (shapeRear[i] >= bodyRear - REAR_BAND) bottom = Math.min(bottom, shapeBottom[i]);
+        }
+        float shadowRear = script.getShadowExtents().y * 0.5f - script.getShadowOffset().y;
+        ModelAttachment hitch = script.getAttachmentById("trailer");
+        float hitchRear = hitch != null ? -hitch.getOffset().z : 0.0f;
+        float wheelRear = 0.0f;
         float ground = com.y - ext.y * 0.5f;
         if (script.getWheelCount() > 0) {
             float model = script.getModel() != null ? script.getModel().getOffset().y : 0.0f;
+            float modelZ = script.getModel() != null ? script.getModel().getOffset().z : 0.0f;
             ground = Float.MAX_VALUE;
             for (int i = 0; i < script.getWheelCount(); i++) {
                 VehicleScript.Wheel wheel = script.getWheel(i);
                 ground = Math.min(ground, wheel.offset.y + model - wheel.radius);
+                wheelRear = Math.max(wheelRear, -(wheel.offset.z + modelZ) + wheel.radius);
             }
         }
-        roof = new float[]{top, ground};
+        float back = Math.max(bodyRear, Math.max(Math.max(shadowRear, hitchRear), wheelRear));
+        roof = new float[]{top, ground, back, Math.max(ground, bottom)};
         roofs.put(script, roof);
         return roof;
     }
@@ -400,7 +447,20 @@ public class VehicleCamera {
     }
 
     public static void wheel(int wheel) {
-        DISTANCE.set(ThirdPersonRig.wheelStep(DISTANCE.get(), NEAREST, FARTHEST, wheel));
+        float e = Math.round((DISTANCE.get() + (wheel > 0 ? -WHEEL_STEP : WHEEL_STEP)) / WHEEL_STEP) * WHEEL_STEP;
+        DISTANCE.set(Math.max(nearestExtra(), Math.min(EXTRA_MAX, e)));
+    }
+
+    static boolean zoomedAllIn() {
+        return DISTANCE.get() <= nearestExtra() + 0.05f;
+    }
+
+    static void zoomAllIn() {
+        DISTANCE.set(nearestExtra());
+    }
+
+    static float nearestExtra() {
+        return Math.min(0.0f, Math.max(EXTRA_MIN, NEAREST - frameBoom));
     }
 
     static void feel(BaseVehicle vehicle, float dt) {
@@ -408,10 +468,44 @@ public class VehicleCamera {
         float speed = Math.abs(vehicle.getCurrentSpeedKmHour());
         float top = vehicle.getMaxSpeed() > 0.0f ? vehicle.getMaxSpeed() : TOP_KMH;
         float pace = Math.min(1.0f, speed / (top * FULL_SHARE));
-        float want = f * (DISTANCE.get() + sizeBoom) * SPEED_BACK * pace;
         float k = ThirdPersonRig.ease(dt, SETTLE_TIME);
-        feltBoom += (want - feltBoom) * k;
         fovAdd += ((float) Math.toRadians(f * SPEED_FOV * pace) - fovAdd) * k;
+        // Dolly zoom, never closer than the frame at the wider view.
+        float d = shown < 0.0f ? frameBoom + DISTANCE.get() : shown;
+        float base = baseFov;
+        feltBoom = d * (float) (Math.tan(base * 0.5) / Math.tan((base + fovAdd) * 0.5)) - d;
+        feltBoom = Math.max(feltBoom, Math.min(0.0f, rearInView(base + fovAdd, dashboard(vehicle), roofUp, rearBottom, rear, sizeLift) - d));
+    }
+
+    // Shortest boom that shows the rear's lowest edge above the dashboard, swung in behind at rest.
+    static float rearInView(float fov, float covered, float top, float bottom, float back, float lift) {
+        double down = Math.toRadians(PITCH.get()) + Math.atan2(Math.max(0.0f, lift), LOOK_AHEAD);
+        double edge = Math.tan(fov * 0.5) * (1.0 - 2.0 * (covered + REAR_PAD));
+        double drop = top + ROOF_CLEAR - bottom;
+        double lo = back;
+        double hi = FARTHEST * 2.0f + back;
+        if (edge > 0.0 && seen(hi, down, edge, drop, back)) {
+            for (int i = 0; i < 24; i++) {
+                double mid = (lo + hi) * 0.5;
+                if (seen(mid, down, edge, drop, back)) hi = mid;
+                else lo = mid;
+            }
+        }
+        return (float) hi;
+    }
+
+    private static boolean seen(double boom, double down, double edge, double drop, double back) {
+        double ahead = boom * Math.cos(down) - back;
+        return ahead > 0.0 && Math.tan(Math.atan2(drop + boom * Math.sin(down), ahead) - down) <= edge;
+    }
+
+    static float dashboard(BaseVehicle vehicle) {
+        IsoPlayer player = IsoPlayer.players[0];
+        if (player == null || !vehicle.isDriver(player)) return 0.0f;
+        if (dashboardTexture == null) dashboardTexture = Texture.getSharedTexture(DASHBOARD);
+        Texture t = dashboardTexture;
+        int screen = Core.getInstance().getScreenHeight();
+        return t == null || screen <= 0 ? 0.0f : Math.min(0.5f, t.getHeight() / (float) screen);
     }
 
     // Speed feel as a share of its default: linear up to the default, then flattening out at
@@ -424,7 +518,7 @@ public class VehicleCamera {
     }
 
     public static float boom() {
-        return Math.max(NEAREST * 0.5f, (shown < 0.0f ? DISTANCE.get() : shown) + sizeBoom + feltBoom);
+        return Math.max(NEAREST * 0.5f, (shown < 0.0f ? frameBoom + DISTANCE.get() : shown) + feltBoom);
     }
 
     // Room the wall grid needs round the vehicle's centre.

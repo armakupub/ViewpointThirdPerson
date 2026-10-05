@@ -18,10 +18,17 @@ public class SettingsMigration {
     static final float SAME = 1.0e-4f;
 
     static final class Change {
+        final String from;
         final LiveSettings.Number setting;
         final float old;
 
         Change(LiveSettings.Number setting, float old) {
+            this(null, setting, old);
+        }
+
+        // Replaces the setting saved under from; a changed value carries over as its offset from old.
+        Change(String from, LiveSettings.Number setting, float old) {
+            this.from = from;
             this.setting = setting;
             this.old = old;
         }
@@ -34,6 +41,12 @@ public class SettingsMigration {
                     new Change(ThirdPersonRig.MELEE_SHOULDER, 0.15f),
                     new Change(ThirdPersonRig.FIREARM_DISTANCE, 2.0f),
                     new Change(VehicleCamera.PITCH, 8.0f),
+            },
+            {
+                    new Change(VehicleCamera.DELAY, 1.0f),
+            },
+            {
+                    new Change(PREFIX + "vehicleDistance", VehicleCamera.DISTANCE, 5.0f),
             },
     };
     static final int CURRENT = STEPS.length + 1;
@@ -79,6 +92,13 @@ public class SettingsMigration {
         int moved = 0;
         for (int step = version - 1; step < STEPS.length; step++) {
             for (Change c : STEPS[step]) {
+                if (c.from != null) {
+                    float was = number(saved.getProperty(c.from));
+                    if (Float.isNaN(was) || Math.abs(was - c.old) <= SAME) continue;
+                    c.setting.set(was - c.old);
+                    moved++;
+                    continue;
+                }
                 if (saved.getProperty((String) key.get(c.setting)) == null) continue;
                 if (Math.abs(c.setting.get() - c.old) > SAME) continue;
                 c.setting.set(fallback.getFloat(c.setting));
@@ -92,6 +112,15 @@ public class SettingsMigration {
         }
         write(file, ours);
         System.out.println("[ViewpointThirdPerson] settings from version " + version + " to " + CURRENT + ", " + moved + " moved to new defaults");
+    }
+
+    static float number(String s) {
+        if (s == null) return Float.NaN;
+        try {
+            return Float.parseFloat(s.trim());
+        } catch (NumberFormatException e) {
+            return Float.NaN;
+        }
     }
 
     static boolean played(Properties saved) {

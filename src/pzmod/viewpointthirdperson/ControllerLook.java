@@ -22,10 +22,10 @@ public class ControllerLook {
     static final float MAX_PITCH = (float) Math.toRadians(85.0);
     static final float TWO_PI = (float) (Math.PI * 2.0);
 
-    public static final LiveSettings.Number SPEED = LiveSettings.number("thirdPersonCamera.controllerLookSpeed", "Right stick: look speed", SECTION, 0.2f, 3.0f, 0.05f, 1.0f);
-    public static final LiveSettings.Number AIM_SPEED = LiveSettings.number("thirdPersonCamera.controllerAimSpeed", "Right stick: look speed while aiming", SECTION, 0.1f, 1.0f, 0.05f, 0.45f);
-    public static final LiveSettings.Toggle INVERT_Y = LiveSettings.toggle("thirdPersonCamera.controllerInvertY", "Right stick: invert vertical look", SECTION, false);
-    public static final LiveSettings.Number FOLLOW_DELAY = LiveSettings.number("thirdPersonCamera.controllerFollowDelay", "Swing in behind after (s)", SECTION, 0.0f, 5.0f, 0.1f, 1.5f);
+    public static final LiveSettings.Number SPEED = LiveSettings.number("thirdPersonCamera.controllerLookSpeed", "Look speed", SECTION, 0.2f, 3.0f, 0.05f, 1.0f);
+    public static final LiveSettings.Number AIM_SPEED = LiveSettings.number("thirdPersonCamera.controllerAimSpeed", "Look speed while aiming", SECTION, 0.1f, 1.0f, 0.05f, 0.45f);
+    public static final LiveSettings.Toggle INVERT_Y = LiveSettings.toggle("thirdPersonCamera.controllerInvertY", "Invert look", SECTION, false);
+    public static final LiveSettings.Number FOLLOW_DELAY = LiveSettings.number("thirdPersonCamera.controllerFollowDelay", "Swing delay (s)", SECTION, 0.0f, 5.0f, 0.1f, 1.5f);
 
     static final float FOLLOW_TIME = 1.2f;
     static final float FOLLOW_AHEAD = (float) Math.toRadians(100.0);
@@ -44,10 +44,7 @@ public class ControllerLook {
     static long drawnAt;
 
     static {
-        SPEED.describe("How fast the right stick turns the view. With a controller the right stick looks round while Viewpoint is on, and a light pull on the right trigger aims, as the right mouse button does. With the Original preset, which aims on the right stick, it keeps aiming.");
-        AIM_SPEED.describe("While aiming, the right stick turns at this share of its speed, for a finer aim.");
-        INVERT_Y.describe("Pushing the right stick forward looks down, and back looks up.");
-        FOLLOW_DELAY.describe("With a controller, the camera swings round behind your character once the right stick rests this long while you walk or run away from it, not while aiming. 0 never swings.");
+        FOLLOW_DELAY.describe("After the right stick rests. 0 = never.");
     }
 
     public static void init() {

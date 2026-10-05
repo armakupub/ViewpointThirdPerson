@@ -11,7 +11,7 @@ import zombie.input.JoypadButton;
 // when missing, through the game's own sets, then the player's bindings are put back as they were.
 public class ControllerPreset {
     static final String NAME = "Viewpoint Third Person";
-    static final String DESCRIPTION = "Third Person Camera for Project Viewpoint: the Default with aiming on LT, shove on LB and rack on D-pad Up. RT attacks, the right stick turns the camera.";
+    static final String DESCRIPTION = "Default layout with aim on LT, shove on LB, rack on D-pad Up. RT attacks, the right stick turns the camera.";
 
     public static boolean install() {
         try {

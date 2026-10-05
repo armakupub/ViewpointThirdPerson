@@ -1,6 +1,13 @@
 Third Person Camera for Project Viewpoint - Changelog
 =====================================================
 
+0.3.3 - 2026-10-05
+  - Works with Project Viewpoint QOL again: scrolling in past the nearest step switches to first person.
+  - Vehicles: the look-around key holds the view while held.
+  - Vehicles: the camera sets its distance per vehicle so the whole rear stays in view, KI5 vehicles included. Distance now adds to that.
+  - Vehicles: the camera waits 2 s before swinging in behind.
+  - Shorter setting and key texts, some settings renamed.
+
 0.3.2 - 2026-10-05
   - Vehicles: the camera runs smoother, above all in tight turns, and the horizon holds steady. The vehicle, its trailer and the people in it now move in step with the camera, on foot your character too.
   - Speed feel is calmer towards its top end: setting off and changing gear no longer rock the camera. The default feels as before.
