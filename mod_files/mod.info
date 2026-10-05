@@ -2,6 +2,6 @@ name=Viewpoint - Third Person Camera
 id=ViewpointThirdPerson
 description=Third-person camera for Project Viewpoint: over the shoulder on foot, chase camera in vehicles, mouse wheel zoom. Settings in Viewpoint's window, Third person tab.
 require=ZombieBuddy,Viewpoint
-modversion=0.3.3
+modversion=0.3.4
 poster=poster.png
 icon=icon.png

@@ -1,6 +1,9 @@
 Third Person Camera for Project Viewpoint - Changelog
 =====================================================
 
+0.3.4 - 2026-10-05
+  - New option under Mouse and keyboard: "Turn around when walking backwards". Your character turns and walks towards the camera, as with a controller. Off by default.
+
 0.3.3 - 2026-10-05
   - Works with Project Viewpoint QOL again: scrolling in past the nearest step switches to first person.
   - Vehicles: the look-around key holds the view while held.

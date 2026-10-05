@@ -165,7 +165,7 @@ public class ControllerLook {
     public static class Patch_backwards {
         @Patch.OnExit
         public static void exit(@Patch.Return(readOnly = false) boolean ret) {
-            if (ret && ControllerLook.active) ret = false;
+            if (ret && (ControllerLook.active || MouseKeyboard.turnsAround())) ret = false;
         }
     }
 
@@ -173,7 +173,7 @@ public class ControllerLook {
     public static class Patch_strafing {
         @Patch.OnExit
         public static void exit(@Patch.Return(readOnly = false) boolean ret) {
-            if (ret && ControllerLook.active) ret = false;
+            if (ret && (ControllerLook.active || MouseKeyboard.turnsAround())) ret = false;
         }
     }
 
