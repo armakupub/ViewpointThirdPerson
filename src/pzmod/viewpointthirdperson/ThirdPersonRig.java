@@ -81,7 +81,8 @@ public class ThirdPersonRig {
     static float drawnX, drawnY;
     static float steadyEye;
     static float steadied;
-    static float lagX, lagY;
+    static float floorH, eyeH;
+    static float lagX, lagY, lagZ;
     static float velX, velY;
     static float lastYaw = Float.NaN;
     static float yawRate;
@@ -90,6 +91,7 @@ public class ThirdPersonRig {
     static final double[] trailT = new double[TRAIL];
     static final float[] trailX = new float[TRAIL];
     static final float[] trailY = new float[TRAIL];
+    static final float[] trailZ = new float[TRAIL];
     static int trailEnd, trailCount;
     static long last;
     static float shownDistance = -1.0f;
@@ -124,7 +126,7 @@ public class ThirdPersonRig {
         SIDE.describe("The Swap shoulder key switches it.");
         LOOK_UP.describe("Keeps the camera off the ground.");
         FOLLOW.describe("0 = rigid.");
-        FOLLOW_HEIGHT.describe("Crouching, stairs.");
+        FOLLOW_HEIGHT.describe("Crouching.");
         MELEE_DISTANCE.describe("1 = unchanged.");
         MELEE_INDOORS.describe("1 = unchanged.");
         FIREARM_FOV.describe("Below 0 zooms in.");
@@ -279,25 +281,30 @@ public class ThirdPersonRig {
         if (!following || steady) steadyEye = frame.eyeY;
         float tx = frame.camX - frame.eyeX * motion;
         float ty = frame.camY - frame.eyeZ * motion;
-        float th = frame.camZ * LEVEL + lerp(steadyEye, frame.eyeY, motion) + HEIGHT.get();
+        // The floor height climbs stairs with the body like x and y; only the eye's own height
+        // (crouching) is smoothed apart.
+        float tz = frame.camZ * LEVEL;
+        float te = lerp(steadyEye, frame.eyeY, motion) + HEIGHT.get();
         float dx = tx - pivotX;
         float dy = ty - pivotY;
-        if (!following || dx * dx + dy * dy > SNAP_DISTANCE * SNAP_DISTANCE || Math.abs(th - pivotH) > LEVEL) {
-            pivotH = th;
+        if (!following || dx * dx + dy * dy > SNAP_DISTANCE * SNAP_DISTANCE || Math.abs(tz - floorH) > LEVEL) {
+            eyeH = te;
             following = true;
             trailCount = 0;
             lagX = 0.0f;
             lagY = 0.0f;
+            lagZ = 0.0f;
         } else {
-            pivotH += (th - pivotH) * ease(dt, FOLLOW_HEIGHT.get());
+            eyeH += (te - eyeH) * ease(dt, FOLLOW_HEIGHT.get());
         }
+        floorH = tz;
         float in = smooth(indoor);
         float meleeShare = lerp(MELEE_DISTANCE.get(), MELEE_INDOORS.get(), in);
         float gunDistance = Math.min(roomy, lerp(FIREARM_DISTANCE.get(), FIREARM_INDOORS.get(), in));
         float distance = Math.max(MIN_DISTANCE, Math.min(MAX_DISTANCE,
                 lerp(roomy * lerp(1.0f, meleeShare, m), gunDistance, a)));
         float near = held >= 0.0f ? Math.min(distance, held) : distance;
-        follow(tx, ty, step, FOLLOW.get() * (1.0f - 0.7f * a) * firm(near));
+        follow(tx, ty, tz, step, FOLLOW.get() * (1.0f - 0.7f * a) * firm(near));
         // The body is drawn, and the camera follows it, on the frames' clock.
         drawnX = velX * FrameClock.ahead;
         drawnY = velY * FrameClock.ahead;
@@ -306,6 +313,7 @@ public class ThirdPersonRig {
         DrawTime.camera(frame, velX, velY);
         pivotX = tx - lagX;
         pivotY = ty - lagY;
+        pivotH = tz - lagZ + eyeH;
         snap.x = pivotX;
         snap.y = pivotY;
         snap.h = pivotH;
@@ -353,12 +361,13 @@ public class ThirdPersonRig {
 
     // The pivot trails the body by its velocity over a short window, on the game's clock rather
     // than ours: at a steady pace the body then holds still on screen however uneven the frames.
-    static void follow(float x, float y, float step, float time) {
+    static void follow(float x, float y, float z, float step, float time) {
         clock += step;
         trailEnd = (trailEnd + 1) % TRAIL;
         trailT[trailEnd] = clock;
         trailX[trailEnd] = x;
         trailY[trailEnd] = y;
+        trailZ[trailEnd] = z;
         trailCount = Math.min(trailCount + 1, TRAIL);
         int first = trailEnd;
         for (int i = 1; i < trailCount; i++) {
@@ -368,11 +377,13 @@ public class ThirdPersonRig {
         double span = clock - trailT[first];
         float vx = span > 1.0e-4 ? (float) ((x - trailX[first]) / span) : 0.0f;
         float vy = span > 1.0e-4 ? (float) ((y - trailY[first]) / span) : 0.0f;
+        float vz = span > 1.0e-4 ? (float) ((z - trailZ[first]) / span) : 0.0f;
         velX = vx;
         velY = vy;
         float k = ease(step, time);
         lagX += (vx * time - lagX) * k;
         lagY += (vy * time - lagY) * k;
+        lagZ += (vz * time - lagZ) * k;
     }
 
     public static float gridBoom(boolean seated, float boom) {
