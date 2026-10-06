@@ -204,34 +204,11 @@ public class ControllerLook {
         }
     }
 
-    // The interact key works on the square the body faces: standing, it turns to the view first.
-    // Walking, the body already faces where it goes, and turning would break the walk.
-    public static void faceView(IsoPlayer p) {
-        if (!turnsToWalk() || p != IsoPlayer.players[0] || p.getVehicle() != null || p.isSitting()
-                || p.isBlockMovement() || !View.enabled || !Look.captured || FreeCam.active
-                || LookAround.MOVED == null) return;
-        try {
-            if (LookAround.MOVED.getBoolean(null)) return;
-        } catch (ReflectiveOperationException | RuntimeException e) {
-            return;
-        }
-        float yaw = Look.yaw;
-        p.setTargetAndCurrentDirection((float) Math.cos(yaw), (float) Math.sin(yaw));
-    }
-
     @Patch(className = "viewpoint.input.Controls", methodName = "turn")
     public static class Patch_turn {
         @Patch.OnEnter(skipOn = true)
         public static boolean enter(@Patch.Argument(0) IsoPlayer p) {
             return ControllerLook.keepsFacing(p);
-        }
-    }
-
-    @Patch(className = "zombie.characters.IsoPlayer", methodName = "doContext")
-    public static class Patch_doContext {
-        @Patch.OnEnter
-        public static void enter(@Patch.This Object self) {
-            ControllerLook.faceView((IsoPlayer) self);
         }
     }
 

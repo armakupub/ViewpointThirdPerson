@@ -11,7 +11,6 @@ Made for [b]mouse and keyboard[/b], with full [b]controller[/b] support.
 [*]Wide view in melee to watch your flanks, over the shoulder when you aim a gun.
 [*]Pulls in when you go indoors and back out when you leave, and eases in before walls instead of snapping.
 [*]Zoom with the mouse wheel.
-[*]Interact key: standing still, your character turns to what you are looking at. On the move it works like vanilla, so you can open doors while running.
 [*]Menus and windows free the cursor and lock it again when you close them. With the cursor free, hold the right mouse button to aim and turn the camera, let go and the cursor is free again. A short right click still opens the context menu.
 [*]Your accuracy is untouched, it is still down to your Aiming skill. This mod does not change it and never will.
 [/list]

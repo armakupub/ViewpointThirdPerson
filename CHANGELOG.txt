@@ -1,6 +1,9 @@
 Third Person Camera for Project Viewpoint - Changelog
 =====================================================
 
+0.3.8 - 2026-10-06
+  - The interact key no longer turns your character to the camera. It works as in vanilla again, on what your character faces.
+
 0.3.7 - 2026-10-06
   - Fixed: the interact key turned your character to the camera while walking, so you could not open a door on the move. It now only turns you while standing still.
   - New option under Mouse and keyboard: "Aiming holds the mouse". With the cursor free, holding the right mouse button aims and turns the camera with the mouse, letting go frees the cursor again. A short right click still opens the context menu. On by default.

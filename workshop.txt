@@ -14,7 +14,6 @@ description=[*]While you walk, the camera swings back behind you once you leave 
 description=[*]Wide view in melee to watch your flanks, over the shoulder when you aim a gun.
 description=[*]Pulls in when you go indoors and back out when you leave, and eases in before walls instead of snapping.
 description=[*]Zoom with the mouse wheel.
-description=[*]Interact key: standing still, your character turns to what you are looking at. On the move it works like vanilla, so you can open doors while running.
 description=[*]Menus and windows free the cursor and lock it again when you close them. With the cursor free, hold the right mouse button to aim and turn the camera, let go and the cursor is free again. A short right click still opens the context menu.
 description=[*]Your accuracy is untouched, it is still down to your Aiming skill. This mod does not change it and never will.
 description=[/list]
