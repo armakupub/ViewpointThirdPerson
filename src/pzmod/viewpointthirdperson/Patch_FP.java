@@ -8,6 +8,7 @@ public class Patch_FP {
     @Patch.OnExit
     public static void exit() {
         WindowCursor.update();
+        AimCursor.update();
         MenuCursor.update();
     }
 }

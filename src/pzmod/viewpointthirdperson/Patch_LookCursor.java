@@ -7,6 +7,7 @@ import me.zed_0xff.zombie_buddy.Patch;
 public class Patch_LookCursor {
     @Patch.OnEnter
     public static void enter() {
+        AimCursor.beforeCapture();
         MenuCursor.beforeCapture();
     }
 }

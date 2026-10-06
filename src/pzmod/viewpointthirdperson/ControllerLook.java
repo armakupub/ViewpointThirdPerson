@@ -204,10 +204,17 @@ public class ControllerLook {
         }
     }
 
-    // The interact key works on the square the body faces: it turns to the view first.
+    // The interact key works on the square the body faces: standing, it turns to the view first.
+    // Walking, the body already faces where it goes, and turning would break the walk.
     public static void faceView(IsoPlayer p) {
         if (!turnsToWalk() || p != IsoPlayer.players[0] || p.getVehicle() != null || p.isSitting()
-                || p.isBlockMovement() || !View.enabled || !Look.captured || FreeCam.active) return;
+                || p.isBlockMovement() || !View.enabled || !Look.captured || FreeCam.active
+                || LookAround.MOVED == null) return;
+        try {
+            if (LookAround.MOVED.getBoolean(null)) return;
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return;
+        }
         float yaw = Look.yaw;
         p.setTargetAndCurrentDirection((float) Math.cos(yaw), (float) Math.sin(yaw));
     }

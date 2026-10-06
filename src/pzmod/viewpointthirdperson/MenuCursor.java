@@ -36,7 +36,7 @@ public class MenuCursor {
         return !ControllerLook.usesPad(IsoPlayer.players[0]) && !Qol.loaded() && menuShown();
     }
 
-    private static boolean menuShown() {
+    static boolean menuShown() {
         ArrayList<UIElementInterface> ui = UIManager.getUI();
         for (int i = ui.size() - 1; i >= 0; i--) {
             UIElementInterface element = ui.get(i);
