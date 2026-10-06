@@ -1,15 +1,26 @@
 # Third Person Camera for Project Viewpoint
 
-A dynamic third-person camera for [Project Viewpoint](https://steamcommunity.com/sharedfiles/filedetails/?id=3809306528), on foot and in vehicles, for Project Zomboid B42. Made for **mouse and keyboard**, with full **controller** support.
+A proper third-person camera for [Project Viewpoint](https://steamcommunity.com/sharedfiles/filedetails/?id=3809306528), on foot and in vehicles, for Project Zomboid B42. It plays like most third-person action games: look around freely, your character runs wherever you go. Made for **mouse and keyboard**, with full **controller** support.
 
-- Zoom with the mouse wheel, on foot and in vehicles.
-- Separate camera stances for melee and firearms: wide to watch your flanks, over the shoulder when you aim.
-- Accuracy stays as the game sets it, by your Aiming skill. This mod does not change it and never will.
-- Moves in when you enter a room and back out when you leave.
-- In vehicles it swings in behind you and reacts to how you drive.
-- Swap shoulders and look around your character with a key, menus free the cursor on their own.
-- Smooth vehicle motion at high frame rates.
-- Everything adjustable under **Third person** in Viewpoint's settings, the keys under **Third person, Keys**.
+**On foot**
+
+- **Free camera**: look around without turning your character. Your character only turns with the camera while you aim (right mouse button).
+- **No more backpedalling**: press S and your character turns around and runs towards the camera, and keeps facing that way when you stop. Want the old walk back? Turn on "Backpedal when walking backwards".
+- While you walk, the camera swings back behind you once you leave the mouse alone for 2 seconds. "Swing delay" changes the time, 0 turns it off.
+- Wide view in melee to watch your flanks, over the shoulder when you aim a gun.
+- Pulls in when you go indoors and back out when you leave, and eases in before walls instead of snapping.
+- Zoom with the mouse wheel.
+- Interact key: standing still, your character turns to what you are looking at. On the move it works like vanilla, so you can open doors while running.
+- Menus and windows free the cursor and lock it again when you close them. With the cursor free, hold the right mouse button to aim and turn the camera, let go and the cursor is free again. A short right click still opens the context menu.
+- Your accuracy is untouched, it is still down to your Aiming skill. This mod does not change it and never will.
+
+**In vehicles**
+
+- The camera sits behind you at a distance that fits each vehicle, KI5 vehicles included, and over the roof of tall trucks and vans.
+- Look around freely, after 2 seconds it swings back in behind you.
+- Leans into how you drive ("Speed feel") and stays smooth in tight turns and at high frame rates, trailers included.
+
+**Settings and keys:** everything is in Viewpoint's own settings window (Delete key), on the **Third person** tab. The keys for swapping shoulders, freeing the cursor and looking around are under **Third person, Keys**, not bound by default.
 
 **Controller:** within the game's own layout the right stick turns the camera on foot and in vehicles, and aiming moves to RT, or to LT with the bundled preset. Viewpoint's views switch from the game's Back wheel. The character runs wherever the left stick points, the camera swings in behind once the stick rests, and D-pad Down and RB work Viewpoint's loot panel while it shows. The preset **Viewpoint Third Person** appears in Options, Controller, Preset after a save with the mod has been loaded once.
 
