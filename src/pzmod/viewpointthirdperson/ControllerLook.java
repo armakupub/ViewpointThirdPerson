@@ -4,6 +4,7 @@ import me.zed_0xff.zombie_buddy.Patch;
 import viewpoint.core.View;
 import viewpoint.input.FreeCam;
 import viewpoint.input.Look;
+import viewpoint.input.ThirdPerson;
 import viewpoint.platform.LiveSettings;
 import zombie.characters.CharacterInputMode;
 import zombie.characters.CharacterJoypadButtonBinding;
@@ -42,6 +43,7 @@ public class ControllerLook {
     // the last would show the view turned by the wrong share.
     static volatile float yawRate, pitchRate;
     static long drawnAt;
+    static volatile boolean mouseLooked;
 
     static {
         FOLLOW_DELAY.describe("After the right stick rests. 0 = never.");
@@ -71,10 +73,16 @@ public class ControllerLook {
         active = on;
         yawRate = 0.0f;
         pitchRate = 0.0f;
+        boolean looked = mouseLooked;
+        mouseLooked = false;
         if (!on) {
-            rested = 0.0f;
-            yawSpring.speed = 0.0f;
             recentre = true;
+            if (!pad && mouseFollows(p) && !looked) {
+                follow(p, dt, MouseKeyboard.FOLLOW_DELAY.get());
+            } else {
+                rested = 0.0f;
+                yawSpring.speed = 0.0f;
+            }
             return;
         }
         JoypadManager j = JoypadManager.instance;
@@ -91,7 +99,7 @@ public class ControllerLook {
                 rested = 0.0f;
                 yawSpring.speed = 0.0f;
             } else {
-                follow(p, dt);
+                follow(p, dt, FOLLOW_DELAY.get());
             }
             return;
         }
@@ -123,10 +131,14 @@ public class ControllerLook {
         return c == null || c.isJoypadIgnoreAim() || c.isJoypadIgnoreAimUntilCentered() || !c.isJoypadButtonsActive();
     }
 
-    // As in GTA: once the stick rests, walking or running away from the camera swings it in
-    // behind, gentler at a walk; never towards the camera, which would only chase itself round.
-    static void follow(IsoPlayer p, float dt) {
-        float delay = FOLLOW_DELAY.get();
+    static boolean mouseFollows(IsoPlayer p) {
+        return p != null && !p.isDead() && p.getVehicle() == null && View.enabled && ThirdPerson.active
+                && Look.captured && !FreeCam.active && !LookAround.held && MouseKeyboard.FOLLOW_DELAY.get() > 0.0f;
+    }
+
+    // As in GTA: once the stick or mouse rests, walking or running away from the camera swings it
+    // in behind, gentler at a walk; never towards the camera, which would only chase itself round.
+    static void follow(IsoPlayer p, float dt, float delay) {
         rested += dt;
         float heading = p.getDirectionAngleRadians();
         float off = wrap(Look.yaw - heading);
@@ -165,7 +177,7 @@ public class ControllerLook {
     public static class Patch_backwards {
         @Patch.OnExit
         public static void exit(@Patch.Return(readOnly = false) boolean ret) {
-            if (ret && (ControllerLook.active || MouseKeyboard.turnsAround())) ret = false;
+            if (ret && ControllerLook.turnsToWalk()) ret = false;
         }
     }
 
@@ -173,7 +185,46 @@ public class ControllerLook {
     public static class Patch_strafing {
         @Patch.OnExit
         public static void exit(@Patch.Return(readOnly = false) boolean ret) {
-            if (ret && (ControllerLook.active || MouseKeyboard.turnsAround())) ret = false;
+            if (ret && ControllerLook.turnsToWalk()) ret = false;
+        }
+    }
+
+    public static boolean turnsToWalk() {
+        return (ControllerLook.active && ThirdPerson.active) || MouseKeyboard.turnsAround();
+    }
+
+    // Viewpoint turns a body standing still to the view; where the body turns to walk, it keeps
+    // facing where it stopped. Aiming still turns it.
+    public static boolean keepsFacing(IsoPlayer p) {
+        if (!turnsToWalk() || p != IsoPlayer.players[0] || p.isAiming() || LookAround.MOVED == null) return false;
+        try {
+            return !LookAround.MOVED.getBoolean(null);
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return false;
+        }
+    }
+
+    // The interact key works on the square the body faces: it turns to the view first.
+    public static void faceView(IsoPlayer p) {
+        if (!turnsToWalk() || p != IsoPlayer.players[0] || p.getVehicle() != null || p.isSitting()
+                || p.isBlockMovement() || !View.enabled || !Look.captured || FreeCam.active) return;
+        float yaw = Look.yaw;
+        p.setTargetAndCurrentDirection((float) Math.cos(yaw), (float) Math.sin(yaw));
+    }
+
+    @Patch(className = "viewpoint.input.Controls", methodName = "turn")
+    public static class Patch_turn {
+        @Patch.OnEnter(skipOn = true)
+        public static boolean enter(@Patch.Argument(0) IsoPlayer p) {
+            return ControllerLook.keepsFacing(p);
+        }
+    }
+
+    @Patch(className = "zombie.characters.IsoPlayer", methodName = "doContext")
+    public static class Patch_doContext {
+        @Patch.OnEnter
+        public static void enter(@Patch.This Object self) {
+            ControllerLook.faceView((IsoPlayer) self);
         }
     }
 

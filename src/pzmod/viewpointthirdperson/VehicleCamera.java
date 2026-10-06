@@ -322,7 +322,10 @@ public class VehicleCamera {
     public static synchronized void afterRead() {
         float dy = wrap(Look.yaw - readYaw);
         float dp = Look.pitch - readPitch;
-        if (Math.abs(dy) > MOUSE_EPSILON || Math.abs(dp) > MOUSE_EPSILON) mouseMoved = true;
+        if (Math.abs(dy) > MOUSE_EPSILON || Math.abs(dp) > MOUSE_EPSILON) {
+            mouseMoved = true;
+            ControllerLook.mouseLooked = true;
+        }
         long now = System.nanoTime();
         float dt = readAt == 0L ? 0.0f : Math.min(0.1f, (now - readAt) / 1.0e9f);
         readAt = now;
