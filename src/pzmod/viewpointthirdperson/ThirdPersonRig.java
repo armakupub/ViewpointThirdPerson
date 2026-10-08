@@ -25,6 +25,8 @@ public class ThirdPersonRig {
     static final String SECTION = TAB + "/On foot";
     static final String COMBAT = TAB + "/Combat";
     static final float LEVEL = 2.4494896f;
+    // Viewpoint's ThirdPerson.lift on foot.
+    static final float FOOT_LIFT = 0.2f;
     static final float SNAP_DISTANCE = 2.0f;
     static final float SIDE_TIME = 0.15f;
     static final float MIN_DISTANCE = 0.2f;
@@ -47,6 +49,7 @@ public class ThirdPersonRig {
     public static final LiveSettings.Number ZOOM_NEAR = LiveSettings.number("thirdPersonCamera.zoomNearest", "Zoom: nearest", SECTION, 0.3f, 8.0f, 0.05f, 1.5f);
     public static final LiveSettings.Number ZOOM_FAR = LiveSettings.number("thirdPersonCamera.zoomFarthest", "Zoom: farthest", SECTION, 0.3f, 8.0f, 0.05f, 4.0f);
     public static final LiveSettings.Number ZOOM_STEPS = LiveSettings.number("thirdPersonCamera.zoomSteps", "Zoom: steps", SECTION, 1.0f, 20.0f, 1.0f, 6.0f);
+    public static final LiveSettings.Toggle INDOOR_ZOOM = LiveSettings.toggle("thirdPersonCamera.indoorZoom", "Zoom in indoors", SECTION, true);
     public static final LiveSettings.Number INDOOR_DISTANCE = LiveSettings.number("thirdPersonCamera.indoorDistance", "Distance indoors", SECTION, 0.3f, 8.0f, 0.05f, 0.5f);
     public static final LiveSettings.Number RECOVER = LiveSettings.number("thirdPersonCamera.collisionRecover", "Back out from walls (s)", SECTION, 0.0f, 1.0f, 0.01f, 0.35f);
     public static final LiveSettings.Number HEIGHT = LiveSettings.number("thirdPersonCamera.height", "Height", SECTION, -0.8f, 1.5f, 0.01f, 0.15f);
@@ -104,7 +107,7 @@ public class ThirdPersonRig {
     static float held = -1.0f;
     static float heldFull;
     static boolean seated;
-    static volatile float seatLift = Float.NaN;
+    static volatile float gridLevelLift = Float.NaN;
     static Method setSide;
 
     public static final class Snap {
@@ -121,6 +124,7 @@ public class ThirdPersonRig {
 
     static {
         DISTANCE.describe("Outdoors. The mouse wheel zooms.");
+        INDOOR_ZOOM.describe("Off = same distance as outdoors.");
         INDOOR_DISTANCE.describe("Entering a building zooms in to this.");
         ZOOM_STEPS.describe("Wheel turns from nearest to farthest.");
         SIDE.describe("The Swap shoulder key switches it.");
@@ -223,10 +227,10 @@ public class ThirdPersonRig {
                 // Viewpoint puts the wall grid's two levels where the eye is, which climbs a level
                 // getting in and out of a tall vehicle; ours start at the vehicle's floor.
                 int level = (int) Math.floor(vehicle.jniTransform.origin.y / LEVEL + 0.05f);
-                seatLift = (level + 0.5f - frame.camZ) * LEVEL - frame.eyeY;
+                gridLevelLift = (level + 0.5f - frame.camZ) * LEVEL - frame.eyeY;
             } else {
                 VehicleCamera.reset();
-                seatLift = Float.NaN;
+                gridLevelLift = Float.NaN;
                 snap.on = false;
                 held = -1.0f;
             }
@@ -240,7 +244,6 @@ public class ThirdPersonRig {
         }
         if (seated) held = -1.0f;
         seated = false;
-        seatLift = Float.NaN;
         VehicleCamera.reset();
         LookAround.update(chr, dt);
 
@@ -266,7 +269,7 @@ public class ThirdPersonRig {
             }
         }
         indoor += ((inside ? 1.0f : 0.0f) - indoor) * ease(dt, inside ? INDOOR_IN_TIME : INDOOR_OUT_TIME);
-        float base = lerp(DISTANCE.get(), indoorDistance(), smooth(indoor));
+        float base = INDOOR_ZOOM.get() ? lerp(DISTANCE.get(), indoorDistance(), smooth(indoor)) : DISTANCE.get();
         shownDistance = shownDistance < 0.0f ? base : shownDistance + (base - shownDistance) * ease(dt, ZOOM_TIME);
         float roomy = shownDistance;
         side += ((SIDE.get() == 0 ? 1.0f : -1.0f) - side) * ease(dt, SIDE_TIME);
@@ -326,6 +329,12 @@ public class ThirdPersonRig {
         snap.seated = false;
         snap.swingOn = false;
         snap.on = true;
+        // Viewpoint's grid starts at the eye's level; a pivot or camera below it, as in a jump, is
+        // walled off.
+        int eyeLevel = (int) Math.floor(frame.camZ + (frame.eyeY + FOOT_LIFT) / LEVEL);
+        float lowest = pivotH - Math.max(0.0f, (float) Math.sin(Look.pitch)) * distance - CLEAR;
+        int level = Math.max(eyeLevel - 1, Math.min(eyeLevel, (int) Math.floor(lowest / LEVEL)));
+        gridLevelLift = level < eyeLevel ? (level + 0.5f - frame.camZ) * LEVEL - frame.eyeY : Float.NaN;
     }
 
     static Field drawnFrame;
@@ -395,9 +404,9 @@ public class ThirdPersonRig {
                 + Math.max(SHOULDER.get(), Math.max(MELEE_SHOULDER.get(), FIREARM_SHOULDER.get())) + 1.0f;
     }
 
-    public static float gridLift(boolean seated, float lift) {
-        float l = seatLift;
-        return ok && seated && !Float.isNaN(l) ? l : lift;
+    public static float gridLift(float lift) {
+        float l = gridLevelLift;
+        return ok && !Float.isNaN(l) ? l : lift;
     }
 
     public static float fov(float fov) {
@@ -600,7 +609,7 @@ public class ThirdPersonRig {
     }
 
     private static boolean zoomedIndoors() {
-        return inside && indoorZoom >= 0.0f;
+        return INDOOR_ZOOM.get() && inside && indoorZoom >= 0.0f;
     }
 
     private static float zoomed() {

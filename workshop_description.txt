@@ -1,6 +1,6 @@
 [h1]What it does[/h1]
 
-A proper third-person camera for [url=https://steamcommunity.com/workshop/filedetails/?id=3809306528]Project Viewpoint[/url], on foot and in vehicles. It plays like most third-person action games: look around freely, your character runs wherever you go.
+A dynamic third-person camera for [url=https://steamcommunity.com/workshop/filedetails/?id=3809306528]Project Viewpoint[/url], on foot and in vehicles. It plays like most third-person action games: look around freely, your character runs wherever you go.
 Made for [b]mouse and keyboard[/b], with full [b]controller[/b] support.
 
 [h2]On foot[/h2]

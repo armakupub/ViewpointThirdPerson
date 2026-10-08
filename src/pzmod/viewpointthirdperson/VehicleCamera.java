@@ -4,7 +4,9 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import org.joml.Matrix3f;
 import org.joml.Vector3f;
+import viewpoint.core.View;
 import viewpoint.input.Look;
+import viewpoint.input.ThirdPerson;
 import viewpoint.platform.LiveSettings;
 import zombie.characters.IsoPlayer;
 import zombie.core.Core;
@@ -329,10 +331,27 @@ public class VehicleCamera {
         long now = System.nanoTime();
         float dt = readAt == 0L ? 0.0f : Math.min(0.1f, (now - readAt) / 1.0e9f);
         readAt = now;
-        float time = MOUSE.get();
-        if (!active || time <= 0.0f) {
+        float time = 0.0f;
+        boolean slowed = false;
+        if (active) {
+            time = MOUSE.get();
+        } else if (ThirdPerson.active && View.enabled) {
+            time = MouseKeyboard.SMOOTHING.get();
+            IsoPlayer p = IsoPlayer.players[0];
+            if (p != null && p.isAiming()) {
+                float speed = MouseKeyboard.AIM_SPEED.get();
+                dy *= speed;
+                dp *= speed;
+                slowed = speed < 1.0f;
+            }
+        }
+        if (time <= 0.0f) {
             pendingYaw = 0.0f;
             pendingPitch = 0.0f;
+            if (slowed) {
+                Look.yaw = wrap(readYaw + dy);
+                Look.pitch = readPitch + dp;
+            }
             return;
         }
         pendingYaw += dy;
